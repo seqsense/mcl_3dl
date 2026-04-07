@@ -34,7 +34,7 @@
 #include <cassert>
 #include <vector>
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include <mcl_3dl/pf.h>
 #include <mcl_3dl/point_types.h>
@@ -228,7 +228,7 @@ public:
   {
     if (gen.getDimension() != 6)
     {
-      ROS_ERROR("Dimension of noise must be 6. Passed: %lu", gen.getDimension());
+      RCLCPP_ERROR(rclcpp::get_logger("mcl_3dl"), "Dimension of noise must be 6. Passed: %lu", gen.getDimension());
     }
     State6DOF noise;
     const std::vector<float> org_noise = gen(engine);
@@ -281,7 +281,7 @@ inline void NoiseGeneratorBase<float>::setMean(const State6DOF& mean)
   mean_.resize(6);
   if (mean.isDiff())
   {
-    ROS_ERROR("Failed to generate noise. mean must be mcl_3dl::Quat.");
+    RCLCPP_ERROR(rclcpp::get_logger("mcl_3dl"), "Failed to generate noise. mean must be mcl_3dl::Quat.");
   }
   for (size_t i = 0; i < 3; i++)
   {
@@ -301,7 +301,7 @@ inline void DiagonalNoiseGenerator<float>::setSigma(const State6DOF& sigma)
   sigma_.resize(6);
   if (!sigma.isDiff())
   {
-    ROS_ERROR("Failed to generate noise. sigma must be rpy vec.");
+    RCLCPP_ERROR(rclcpp::get_logger("mcl_3dl"), "Failed to generate noise. sigma must be rpy vec.");
   }
   for (size_t i = 0; i < 3; i++)
   {

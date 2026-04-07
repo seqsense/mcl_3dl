@@ -29,7 +29,7 @@
 
 #include <gtest/gtest.h>
 
-#include <pcl_ros/point_cloud.h>
+#include <pcl/point_cloud.h>
 #include <pcl/filters/voxel_grid.h>
 
 #include <mcl_3dl/point_types.h>

@@ -33,12 +33,7 @@
 #include <memory>
 #include <string>
 
-#include <dynamic_reconfigure/server.h>
-#include <ros/ros.h>
-
-#include <mcl_3dl/MCL3DLParamsConfig.h>
 #include <mcl_3dl/parameters.h>
-#include <mcl_3dl_compat/compatibility.h>
 
 namespace mcl_3dl
 {
@@ -48,6 +43,12 @@ Parameters::Parameters()
   , lidar_measurement_beam_params_(std::make_shared<LidarMeasurementModelBeamParameters>())
 {
 }
+
+#ifdef IS_ROS1_BUILD
+#include <dynamic_reconfigure/server.h>
+#include <ros/ros.h>
+#include <mcl_3dl/MCL3DLParamsConfig.h>
+#include <mcl_3dl_compat/compatibility.h>
 
 bool Parameters::load(ros::NodeHandle& pnh)
 {
@@ -103,7 +104,7 @@ bool Parameters::load(ros::NodeHandle& pnh)
 
   double map_update_interval_t;
   pnh.param("map_update_interval_interval", map_update_interval_t, 2.0);
-  map_update_interval_.reset(new ros::Duration(map_update_interval_t));
+  map_update_interval_.reset(new rclcpp::Duration(rclcpp::Duration::from_seconds(map_update_interval_t)));
 
   pnh.param("dist_weight_x", dist_weight_[0], 1.0f);
   pnh.param("dist_weight_y", dist_weight_[1], 1.0f);
@@ -159,11 +160,11 @@ bool Parameters::load(ros::NodeHandle& pnh)
 
   double match_output_interval_t;
   pnh.param("match_output_interval_interval", match_output_interval_t, 0.2);
-  match_output_interval_.reset(new ros::Duration(match_output_interval_t));
+  match_output_interval_.reset(new rclcpp::Duration(rclcpp::Duration::from_seconds(match_output_interval_t)));
 
   double tf_tolerance_t;
   pnh.param("tf_tolerance", tf_tolerance_t, 0.05);
-  tf_tolerance_.reset(new ros::Duration(tf_tolerance_t));
+  tf_tolerance_.reset(new rclcpp::Duration(rclcpp::Duration::from_seconds(tf_tolerance_t)));
 
   pnh.param("match_output_dist", match_output_dist_, 0.1);
   pnh.param("unmatch_output_dist", unmatch_output_dist_, 0.5);
@@ -323,5 +324,7 @@ void Parameters::cbParameter(const MCL3DLParamsConfig& config, const uint32_t /*
   std_warn_thresh_[1] = config.std_warn_thresh_z;
   std_warn_thresh_[2] = config.std_warn_thresh_yaw;
 }
+
+#endif  // IS_ROS1_BUILD
 
 }  // namespace mcl_3dl

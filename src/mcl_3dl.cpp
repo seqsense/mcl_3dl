@@ -33,20 +33,22 @@
 
 #include <ros/ros.h>
 
-#include <sensor_msgs/PointCloud2.h>
-#include <nav_msgs/Odometry.h>
-#include <sensor_msgs/Imu.h>
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+#include <mcl_3dl_msgs/msg/status.hpp>
 #include <mcl_3dl_msgs/ResizeParticle.h>
-#include <mcl_3dl_msgs/Status.h>
 #include <mcl_3dl_msgs/LoadPCD.h>
 #include <std_srvs/Trigger.h>
 #include <diagnostic_updater/diagnostic_updater.h>
 
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
+
+#include <rclcpp/rclcpp.hpp>
 
 #include <mcl_3dl/mcl_3dl_engine.h>
 #include <mcl_3dl/parameters.h>
@@ -61,7 +63,7 @@ public:
   MCL3dlNode()
     : pnh_("~")
     , tfl_(tfbuf_, true, ros::TransportHints().tcpNoDelay(true))
-    , engine_(tfbuf_)
+    , engine_(tfbuf_, rclcpp::get_logger("mcl_3dl"))
   {
   }
 
@@ -181,37 +183,38 @@ protected:
         std::bind(&MCL3dlNode::checkSubscribers, this, _1));
   }
 
-  void publishParticles(const geometry_msgs::PoseArray& pa)
+  void publishParticles(const geometry_msgs::msg::PoseArray& pa)
   {
-    pub_particle_.publish(pa);
+    pub_particle_.publish(static_cast<const geometry_msgs::PoseArray&>(pa));
   }
-  void publishDebugMarker(const visualization_msgs::MarkerArray& markers)
+  void publishDebugMarker(const visualization_msgs::msg::MarkerArray& markers)
   {
-    pub_debug_marker_.publish(markers);
+    pub_debug_marker_.publish(static_cast<const visualization_msgs::MarkerArray&>(markers));
   }
-  void publishMatched(const sensor_msgs::PointCloud2& pc)
+  void publishMatched(const sensor_msgs::msg::PointCloud2& pc)
   {
-    pub_matched_.publish(pc);
+    pub_matched_.publish(static_cast<const sensor_msgs::PointCloud2&>(pc));
   }
-  void publishUnmatched(const sensor_msgs::PointCloud2& pc)
+  void publishUnmatched(const sensor_msgs::msg::PointCloud2& pc)
   {
-    pub_unmatched_.publish(pc);
+    pub_unmatched_.publish(static_cast<const sensor_msgs::PointCloud2&>(pc));
   }
-  void publishPose(const geometry_msgs::PoseWithCovarianceStamped& pose)
+  void publishPose(const geometry_msgs::msg::PoseWithCovarianceStamped& pose)
   {
-    pub_pose_.publish(pose);
+    pub_pose_.publish(static_cast<const geometry_msgs::PoseWithCovarianceStamped&>(pose));
   }
-  void publishStatus(const mcl_3dl_msgs::Status& status)
+  void publishStatus(const mcl_3dl_msgs::msg::Status& status)
   {
-    pub_status_.publish(status);
+    pub_status_.publish(static_cast<const mcl_3dl_msgs::Status&>(status));
   }
-  void publishMapCloud(const sensor_msgs::PointCloud2& pc)
+  void publishMapCloud(const sensor_msgs::msg::PointCloud2& pc)
   {
-    pub_mapcloud_.publish(pc);
+    pub_mapcloud_.publish(static_cast<const sensor_msgs::PointCloud2&>(pc));
   }
-  void broadcastTransform(const std::vector<geometry_msgs::TransformStamped>& transforms)
+  void broadcastTransform(const std::vector<geometry_msgs::msg::TransformStamped>& transforms)
   {
-    tfb_.sendTransform(transforms);
+    std::vector<geometry_msgs::TransformStamped> base_transforms(transforms.begin(), transforms.end());
+    tfb_.sendTransform(base_transforms);
   }
   void updateDiag()
   {
@@ -305,9 +308,9 @@ protected:
     stat.add("Odometry Availability", has_odom ? "true" : "false");
     stat.add("IMU Availability", has_imu ? "true" : "false");
 
-    mcl_3dl_msgs::Status status = engine_.getStatus();
+    mcl_3dl_msgs::msg::Status status = engine_.getStatus();
     status.entropy = engine_.getEntropy();
-    pub_status_.publish(status);
+    pub_status_.publish(static_cast<const mcl_3dl_msgs::Status&>(status));
   }
 
 private:

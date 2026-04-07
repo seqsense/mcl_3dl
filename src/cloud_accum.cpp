@@ -31,8 +31,8 @@
 #include <string>
 #include <functional>
 
-#include <ros/ros.h>
-#include <sensor_msgs/PointCloud2.h>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <mcl_3dl/cloud_accum.h>
 
@@ -40,9 +40,9 @@ namespace mcl_3dl
 {
 void CloudAccumulationLogicPassThrough::push(
     const std::string& key,
-    const sensor_msgs::PointCloud2::ConstPtr& msg,
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg,
     std::function<void()> process,
-    std::function<bool(const sensor_msgs::PointCloud2::ConstPtr&)> accumulate,
+    std::function<bool(const sensor_msgs::msg::PointCloud2::ConstSharedPtr&)> accumulate,
     std::function<void()> clear)
 {
   clear();
@@ -52,9 +52,9 @@ void CloudAccumulationLogicPassThrough::push(
 
 void CloudAccumulationLogic::push(
     const std::string& key,
-    const sensor_msgs::PointCloud2::ConstPtr& msg,
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg,
     std::function<void()> process,
-    std::function<bool(const sensor_msgs::PointCloud2::ConstPtr&)> accumulate,
+    std::function<bool(const sensor_msgs::msg::PointCloud2::ConstSharedPtr&)> accumulate,
     std::function<void()> clear)
 {
   // If total count of the accumulated cloud exceeds limit,
@@ -100,7 +100,7 @@ void CloudAccumulationLogic::push(
   }
   else
   {
-    ROS_WARN(
+    RCLCPP_WARN(rclcpp::get_logger("mcl_3dl"),
         "Number of the accumulated cloud exceeds limit. "
         "Sensor with frame_id of %s may have been stopped.",
         keys_.front().c_str());

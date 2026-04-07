@@ -36,7 +36,7 @@
 #include <vector>
 
 #include <pcl/point_types.h>
-#include <pcl_ros/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <mcl_3dl/chunked_kdtree.h>
 #include <mcl_3dl/point_cloud_random_sampler.h>

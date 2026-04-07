@@ -35,7 +35,7 @@
 #include <vector>
 
 #include <pcl/point_types.h>
-#include <pcl_ros/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <mcl_3dl/chunked_kdtree.h>
 #include <mcl_3dl/lidar_measurement_model_base.h>

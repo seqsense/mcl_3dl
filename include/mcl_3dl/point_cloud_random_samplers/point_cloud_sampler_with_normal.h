@@ -42,7 +42,8 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
+#include <chrono>
 
 #include <mcl_3dl/point_cloud_random_sampler.h>
 #include <mcl_3dl/parameters.h>
@@ -92,7 +93,7 @@ public:
       const typename pcl::PointCloud<POINT_TYPE>::ConstPtr& pc,
       const size_t num) const final
   {
-    const ros::WallTime start_timestamp = ros::WallTime::now();
+    const auto start_timestamp = std::chrono::steady_clock::now();
 
     typename pcl::PointCloud<POINT_TYPE>::Ptr output(new pcl::PointCloud<POINT_TYPE>);
     output->header = pc->header;
@@ -135,7 +136,7 @@ public:
     ne.setRadiusSearch(params_->normal_search_range_);
     ne.compute(*cloud_normals);
 
-    const ros::WallTime compute_normal_timestamp = ros::WallTime::now();
+    const auto compute_normal_timestamp = std::chrono::steady_clock::now();
     std::vector<double> cumulative_weight(cloud_normals->points.size(), 0.0);
     for (size_t i = 0; i < cloud_normals->points.size(); i++)
     {
@@ -176,11 +177,12 @@ public:
       output->push_back(pc->points[index]);
     }
 
-    const ros::WallTime final_timestamp = ros::WallTime::now();
-    ROS_DEBUG("PointCloudSamplerWithNormal::sample() computation time: %f[s] (Normal calculation: %f[s])",
-              (final_timestamp - start_timestamp).toSec(), (compute_normal_timestamp - start_timestamp).toSec());
-    ROS_DEBUG("Chosen eigen vector: (%f, %f, %f), max weight: %f",
-              eigen_vectors_(0, 2), eigen_vectors_(1, 2), eigen_vectors_(2, 2), max_weight);
+    const auto final_timestamp = std::chrono::steady_clock::now();
+    RCLCPP_DEBUG(rclcpp::get_logger("mcl_3dl"), "PointCloudSamplerWithNormal::sample() computation time: %f[s] (Normal calculation: %f[s])",
+                 std::chrono::duration<double>(final_timestamp - start_timestamp).count(),
+                 std::chrono::duration<double>(compute_normal_timestamp - start_timestamp).count());
+    RCLCPP_DEBUG(rclcpp::get_logger("mcl_3dl"), "Chosen eigen vector: (%f, %f, %f), max weight: %f",
+                 eigen_vectors_(0, 2), eigen_vectors_(1, 2), eigen_vectors_(2, 2), max_weight);
     return output;
   }
 };

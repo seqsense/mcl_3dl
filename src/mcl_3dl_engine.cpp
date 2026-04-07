@@ -43,15 +43,32 @@
 
 #include <boost/chrono.hpp>
 
-#include <pcl_ros/point_cloud.h>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
+#include <visualization_msgs/msg/marker.hpp>
+
+#include <pcl/common/transforms.h>
+#include <pcl_conversions/pcl_conversions.h>
+#ifdef IS_ROS1_BUILD
 #include <pcl_ros/transforms.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
+#else
+#include <pcl_ros/transforms.hpp>
+#include <tf2_sensor_msgs/tf2_sensor_msgs.hpp>
+#endif
 
 namespace mcl_3dl
 {
-MCL3dlEngine::MCL3dlEngine(tf2_ros::Buffer& tfbuf)
+MCL3dlEngine::MCL3dlEngine(tf2_ros::Buffer& tfbuf, const rclcpp::Logger& logger)
   : tfbuf_(tfbuf)
+  , logger_(logger)
   , params_(nullptr)
+  , localized_last_(static_cast<int64_t>(0), RCL_ROS_TIME)
+  , tf_tolerance_base_(0, 0)
+  , match_output_last_(static_cast<int64_t>(0), RCL_ROS_TIME)
+  , odom_last_(static_cast<int64_t>(0), RCL_ROS_TIME)
+  , imu_last_(static_cast<int64_t>(0), RCL_ROS_TIME)
   , cnt_measure_(0)
   , global_localization_fix_cnt_(0)
   , point_rep_(new MyPointRepresentation)
@@ -129,7 +146,7 @@ bool MCL3dlEngine::configure(Parameters& params)
     max_search_radius = std::max(max_search_radius, lm.second->getMaxSearchRange());
   }
 
-  ROS_DEBUG("max_search_radius: %0.3f", max_search_radius);
+  RCLCPP_DEBUG(logger_,"max_search_radius: %0.3f", max_search_radius);
   kdtree_.reset(new ChunkedKdtree<PointType>(params_->map_chunk_, max_search_radius));
   kdtree_->setEpsilon(params_->map_grid_min_ / 16);
   kdtree_->setPointRepresentation(point_rep_);
@@ -137,24 +154,25 @@ bool MCL3dlEngine::configure(Parameters& params)
   return true;
 }
 
-void MCL3dlEngine::processMapCloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
+void MCL3dlEngine::processMapCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
 {
-  ROS_INFO("map received");
+  RCLCPP_INFO(logger_,"map received");
   pcl::PointCloud<PointType>::Ptr pc_tmp(new pcl::PointCloud<PointType>);
   if (!mcl_3dl::fromROSMsg(*msg, *pc_tmp))
   {
     has_map_ = false;
     return;
   }
-  const ros::Time map_stamp = (msg->header.stamp != ros::Time()) ? msg->header.stamp : ros::Time::now();
+  const rclcpp::Time zero_time(static_cast<int64_t>(0), RCL_ROS_TIME);
+  const rclcpp::Time map_stamp = (rclcpp::Time(msg->header.stamp) != zero_time) ? rclcpp::Time(msg->header.stamp) : rclcpp::Clock(RCL_ROS_TIME).now();
   pcl_conversions::toPCL(map_stamp, pc_tmp->header.stamp);
 
   loadMapCloud(pc_tmp);
 }
 
-void MCL3dlEngine::processMapCloudUpdate(const sensor_msgs::PointCloud2::ConstPtr& msg)
+void MCL3dlEngine::processMapCloudUpdate(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
 {
-  ROS_INFO("map_update received");
+  RCLCPP_INFO(logger_,"map_update received");
   pcl::PointCloud<PointType>::Ptr pc_tmp(new pcl::PointCloud<PointType>);
   if (!mcl_3dl::fromROSMsg(*msg, *pc_tmp))
     return;
@@ -166,7 +184,7 @@ void MCL3dlEngine::processMapCloudUpdate(const sensor_msgs::PointCloud2::ConstPt
   ds.filter(*pc_update_);
 }
 
-void MCL3dlEngine::processPosition(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+void MCL3dlEngine::processPosition(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg)
 {
   const double len2 =
       msg->pose.pose.orientation.x * msg->pose.pose.orientation.x +
@@ -175,18 +193,25 @@ void MCL3dlEngine::processPosition(const geometry_msgs::PoseWithCovarianceStampe
       msg->pose.pose.orientation.w * msg->pose.pose.orientation.w;
   if (std::abs(len2 - 1.0) > 0.1)
   {
-    ROS_ERROR("Discarded invalid initialpose. The orientation must be unit quaternion.");
+    RCLCPP_ERROR(logger_, "Discarded invalid initialpose. The orientation must be unit quaternion.");
     return;
   }
 
-  geometry_msgs::PoseStamped pose_in, pose;
+  geometry_msgs::msg::PoseStamped pose_in, pose;
   pose_in.header = msg->header;
   pose_in.pose = msg->pose.pose;
   try
   {
-    const geometry_msgs::TransformStamped trans = tfbuf_.lookupTransform(
-        params_->frame_ids_.at("map"), pose_in.header.frame_id, pose_in.header.stamp, ros::Duration(1.0));
+    const geometry_msgs::msg::TransformStamped trans = tfbuf_.lookupTransform(
+        params_->frame_ids_.at("map"), pose_in.header.frame_id, pose_in.header.stamp, rclcpp::Duration::from_seconds(1.0));
+#ifdef IS_ROS1_BUILD
+    tf2::doTransform(
+        static_cast<const geometry_msgs::PoseStamped&>(pose_in),
+        static_cast<geometry_msgs::PoseStamped&>(pose),
+        static_cast<const geometry_msgs::TransformStamped&>(trans));
+#else
     tf2::doTransform(pose_in, pose, trans);
+#endif
   }
   catch (tf2::TransformException& e)
   {
@@ -211,7 +236,7 @@ void MCL3dlEngine::processPosition(const geometry_msgs::PoseWithCovarianceStampe
   publishParticles();
 }
 
-void MCL3dlEngine::processOdom(const nav_msgs::Odometry::ConstPtr& msg)
+void MCL3dlEngine::processOdom(const nav_msgs::msg::Odometry::ConstSharedPtr& msg)
 {
   odom_ =
       State6DOF(
@@ -225,14 +250,14 @@ void MCL3dlEngine::processOdom(const nav_msgs::Odometry::ConstPtr& msg)
   if (!has_odom_)
   {
     odom_prev_ = odom_;
-    odom_last_ = msg->header.stamp;
+    odom_last_ = rclcpp::Time(msg->header.stamp);
     has_odom_ = true;
     return;
   }
-  const float dt = (msg->header.stamp - odom_last_).toSec();
+  const float dt = (rclcpp::Time(msg->header.stamp) - odom_last_).seconds();
   if (dt < 0.0 || dt > 5.0)
   {
-    ROS_WARN("Detected time jump in odometry. Resetting.");
+    RCLCPP_WARN(logger_, "Detected time jump in odometry. Resetting.");
     has_odom_ = false;
     return;
   }
@@ -244,13 +269,13 @@ void MCL3dlEngine::processOdom(const nav_msgs::Odometry::ConstPtr& msg)
       motion_prediction_model_->predict(s);
     };
     pf_->predict(prediction_func);
-    odom_last_ = msg->header.stamp;
+    odom_last_ = rclcpp::Time(msg->header.stamp);
     odom_prev_ = odom_;
   }
   if (params_->fake_imu_)
   {
     const Vec3 accel = odom_.rot_ * Vec3(0.0, 0.0, 1.0);
-    sensor_msgs::Imu::Ptr imu(new sensor_msgs::Imu);
+    sensor_msgs::msg::Imu::SharedPtr imu(new sensor_msgs::msg::Imu);
     imu->header = msg->header;
     imu->linear_acceleration.x = accel.x_;
     imu->linear_acceleration.y = accel.y_;
@@ -260,13 +285,13 @@ void MCL3dlEngine::processOdom(const nav_msgs::Odometry::ConstPtr& msg)
   }
 }
 
-void MCL3dlEngine::processCloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
+void MCL3dlEngine::processCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
 {
-  status_ = mcl_3dl_msgs::Status();
-  status_.header.stamp = ros::Time::now();
-  status_.status = mcl_3dl_msgs::Status::NORMAL;
-  status_.error = mcl_3dl_msgs::Status::ERROR_NORMAL;
-  status_.convergence_status = mcl_3dl_msgs::Status::CONVERGENCE_STATUS_NORMAL;
+  status_ = mcl_3dl_msgs::msg::Status();
+  status_.header.stamp = rclcpp::Clock(RCL_ROS_TIME).now();
+  status_.status = mcl_3dl_msgs::msg::Status::NORMAL;
+  status_.error = mcl_3dl_msgs::msg::Status::ERROR_NORMAL;
+  status_.convergence_status = mcl_3dl_msgs::msg::Status::CONVERGENCE_STATUS_NORMAL;
 
   if (!has_map_)
     return;
@@ -286,24 +311,31 @@ void MCL3dlEngine::accumClear()
   pc_accum_header_.clear();
 }
 
-bool MCL3dlEngine::accumCloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
+bool MCL3dlEngine::accumCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
 {
-  sensor_msgs::PointCloud2 pc_bl;
+  sensor_msgs::msg::PointCloud2 pc_bl;
   try
   {
-    const geometry_msgs::TransformStamped trans = tfbuf_.lookupTransform(
-        params_->frame_ids_.at("odom"), msg->header.frame_id, msg->header.stamp, ros::Duration(0.1));
+    const geometry_msgs::msg::TransformStamped trans = tfbuf_.lookupTransform(
+        params_->frame_ids_.at("odom"), msg->header.frame_id, msg->header.stamp, rclcpp::Duration::from_seconds(0.1));
+#ifdef IS_ROS1_BUILD
+    tf2::doTransform(
+        static_cast<const sensor_msgs::PointCloud2&>(*msg),
+        static_cast<sensor_msgs::PointCloud2&>(pc_bl),
+        static_cast<const geometry_msgs::TransformStamped&>(trans));
+#else
     tf2::doTransform(*msg, pc_bl, trans);
+#endif
   }
   catch (tf2::TransformException& e)
   {
-    ROS_INFO("Failed to transform pointcloud: %s", e.what());
+    RCLCPP_INFO(logger_,"Failed to transform pointcloud: %s", e.what());
     return false;
   }
   pcl::PointCloud<PointType>::Ptr pc_tmp(new pcl::PointCloud<PointType>);
   if (!mcl_3dl::fromROSMsg(pc_bl, *pc_tmp))
   {
-    ROS_INFO("Failed to convert pointcloud");
+    RCLCPP_INFO(logger_,"Failed to convert pointcloud");
     return false;
   }
 
@@ -326,17 +358,17 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
 
   if (pc_accum_header_.empty())
   {
-    ROS_ERROR("MCL measure function is called without available pointcloud");
+    RCLCPP_ERROR(logger_, "MCL measure function is called without available pointcloud");
     return;
   }
-  const std_msgs::Header& header = pc_accum_header_.back();
+  const std_msgs::msg::Header& header = pc_accum_header_.back();
 
   try
   {
-    const geometry_msgs::TransformStamped trans = tfbuf_.lookupTransform(
+    const geometry_msgs::msg::TransformStamped trans = tfbuf_.lookupTransform(
         params_->frame_ids_.at("base_link"),
         pc_local_accum_->header.frame_id,
-        header.stamp, ros::Duration(0.1));
+        header.stamp, rclcpp::Duration::from_seconds(0.1));
 
     const Eigen::Affine3f trans_eigen =
         Eigen::Translation3f(
@@ -352,7 +384,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
   }
   catch (tf2::TransformException& e)
   {
-    ROS_INFO("Failed to transform pointcloud: %s", e.what());
+    RCLCPP_INFO(logger_,"Failed to transform pointcloud: %s", e.what());
     return;
   }
   std::vector<Vec3> origins;
@@ -360,7 +392,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
   {
     try
     {
-      const geometry_msgs::TransformStamped trans = tfbuf_.lookupTransform(
+      const geometry_msgs::msg::TransformStamped trans = tfbuf_.lookupTransform(
           params_->frame_ids_.at("base_link"), header.stamp, h.frame_id, h.stamp, params_->frame_ids_.at("odom"));
       origins.push_back(Vec3(trans.transform.translation.x,
                              trans.transform.translation.y,
@@ -368,7 +400,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     }
     catch (tf2::TransformException& e)
     {
-      ROS_INFO("Failed to transform pointcloud: %s", e.what());
+      RCLCPP_INFO(logger_,"Failed to transform pointcloud: %s", e.what());
       return;
     }
   }
@@ -399,8 +431,8 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
 
   if (pc_locals["likelihood"]->size() == 0)
   {
-    ROS_ERROR("All points are filtered out. Failed to localize.");
-    status_.error = mcl_3dl_msgs::Status::ERROR_POINTS_NOT_FOUND;
+    RCLCPP_ERROR(logger_, "All points are filtered out. Failed to localize.");
+    status_.error = mcl_3dl_msgs::msg::Status::ERROR_POINTS_NOT_FOUND;
     if (diag_update_cb_)
       diag_update_cb_();
     return;
@@ -408,7 +440,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
 
   if (pc_locals["beam"] && pc_locals["beam"]->size() == 0)
   {
-    ROS_DEBUG("All beam points are filtered out. Skipping beam model.");
+    RCLCPP_DEBUG(logger_,"All beam points are filtered out. Skipping beam model.");
   }
 
   float match_ratio_min = 1.0;
@@ -479,7 +511,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
 
   if (lidar_measurements_["beam"])
   {
-    visualization_msgs::MarkerArray markers;
+    visualization_msgs::msg::MarkerArray markers;
 
     pcl::PointCloud<PointType>::Ptr pc_particle_beam(new pcl::PointCloud<PointType>);
     *pc_particle_beam = *pc_locals["beam"];
@@ -495,12 +527,12 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
 
       if (beam_status != LidarMeasurementModelBeam::BeamStatus::LONG)
       {
-        visualization_msgs::Marker marker;
+        visualization_msgs::msg::Marker marker;
         marker.header.frame_id = params_->frame_ids_.at("map");
         marker.header.stamp = header.stamp;
         marker.ns = "Ray collisions";
         marker.id = markers.markers.size();
-        marker.type = visualization_msgs::Marker::CUBE;
+        marker.type = visualization_msgs::msg::Marker::CUBE;
         marker.action = 0;
         marker.pose.position.x = point.pos_.x_;
         marker.pose.position.y = point.pos_.y_;
@@ -510,7 +542,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
         marker.pose.orientation.z = 0.0;
         marker.pose.orientation.w = 1.0;
         marker.scale.x = marker.scale.y = marker.scale.z = 0.2;
-        marker.lifetime = ros::Duration(0.2);
+        marker.lifetime = rclcpp::Duration::from_seconds(0.2);
         marker.frame_locked = true;
         switch (beam_status)
         {
@@ -538,12 +570,12 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
         markers.markers.push_back(marker);
       }
 
-      visualization_msgs::Marker marker;
+      visualization_msgs::msg::Marker marker;
       marker.header.frame_id = params_->frame_ids_.at("map");
       marker.header.stamp = header.stamp;
       marker.ns = "Rays";
       marker.id = markers.markers.size();
-      marker.type = visualization_msgs::Marker::LINE_STRIP;
+      marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
       marker.action = 0;
       marker.pose.position.x = 0.0;
       marker.pose.position.y = 0.0;
@@ -553,7 +585,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
       marker.pose.orientation.z = 0.0;
       marker.pose.orientation.w = 1.0;
       marker.scale.x = marker.scale.y = marker.scale.z = 0.04;
-      marker.lifetime = ros::Duration(0.2);
+      marker.lifetime = rclcpp::Duration::from_seconds(0.2);
       marker.frame_locked = true;
       marker.points.resize(2);
       marker.points[0].x = pos.x_;
@@ -615,12 +647,12 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     e.transform(*pc_particle);
     for (const auto& p : pc_particle->points)
     {
-      visualization_msgs::Marker marker;
+      visualization_msgs::msg::Marker marker;
       marker.header.frame_id = params_->frame_ids_.at("map");
       marker.header.stamp = header.stamp;
       marker.ns = "Sample points";
       marker.id = markers.markers.size();
-      marker.type = visualization_msgs::Marker::SPHERE;
+      marker.type = visualization_msgs::msg::Marker::SPHERE;
       marker.action = 0;
       marker.pose.position.x = p.x;
       marker.pose.position.y = p.y;
@@ -630,7 +662,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
       marker.pose.orientation.z = 0.0;
       marker.pose.orientation.w = 1.0;
       marker.scale.x = marker.scale.y = marker.scale.z = 0.2;
-      marker.lifetime = ros::Duration(0.2);
+      marker.lifetime = rclcpp::Duration::from_seconds(0.2);
       marker.frame_locked = true;
       marker.color.a = 1.0;
       marker.color.r = 1.0;
@@ -664,7 +696,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     if (jump_dist > params_->jump_dist_ ||
         fabs(jump_ang) > params_->jump_ang_)
     {
-      ROS_INFO("Pose jumped pos:%0.3f, ang:%0.3f", jump_dist, jump_ang);
+      RCLCPP_INFO(logger_,"Pose jumped pos:%0.3f, ang:%0.3f", jump_dist, jump_ang);
       jump = true;
 
       const auto integ_reset_func = [](State6DOF& s)
@@ -676,11 +708,11 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     }
     state_prev_ = e;
   }
-  geometry_msgs::TransformStamped trans;
+  geometry_msgs::msg::TransformStamped trans;
   if (has_odom_)
     trans.header.stamp = odom_last_ + tf_tolerance_base_ + *params_->tf_tolerance_;
   else
-    trans.header.stamp = ros::Time::now() + tf_tolerance_base_ + *params_->tf_tolerance_;
+    trans.header.stamp = rclcpp::Clock(RCL_ROS_TIME).now() + tf_tolerance_base_ + *params_->tf_tolerance_;
   trans.header.frame_id = params_->frame_ids_.at("map");
   trans.child_frame_id = params_->frame_ids_.at("odom");
   const auto rpy = map_rot.getRPY();
@@ -694,7 +726,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
   trans.transform.translation = tf2::toMsg(tf2::Vector3(map_pos.x_, map_pos.y_, map_pos.z_));
   trans.transform.rotation = tf2::toMsg(tf2::Quaternion(map_rot.x_, map_rot.y_, map_rot.z_, map_rot.w_));
 
-  std::vector<geometry_msgs::TransformStamped> transforms;
+  std::vector<geometry_msgs::msg::TransformStamped> transforms;
   transforms.push_back(trans);
 
   e.rot_ = map_rot * odom_.rot_;
@@ -725,7 +757,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
       std::max(
           0.1f, static_cast<float>(params_->num_particles_) / pf_->getParticleSize()));
 
-  geometry_msgs::PoseWithCovarianceStamped pose;
+  geometry_msgs::msg::PoseWithCovarianceStamped pose;
   pose.header.stamp = header.stamp;
   pose.header.frame_id = trans.header.frame_id;
   pose.pose.pose.position.x = e.pos_.x_;
@@ -748,23 +780,23 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
         std::sqrt(pose.pose.covariance[2 * 6 + 2]) > params_->std_warn_thresh_[1] ||
         std::sqrt(pose.pose.covariance[5 * 6 + 5]) > params_->std_warn_thresh_[2])
     {
-      status_.convergence_status = mcl_3dl_msgs::Status::CONVERGENCE_STATUS_LARGE_STD_VALUE;
+      status_.convergence_status = mcl_3dl_msgs::msg::Status::CONVERGENCE_STATUS_LARGE_STD_VALUE;
     }
   }
 
-  if (status_.convergence_status != mcl_3dl_msgs::Status::CONVERGENCE_STATUS_LARGE_STD_VALUE)
+  if (status_.convergence_status != mcl_3dl_msgs::msg::Status::CONVERGENCE_STATUS_LARGE_STD_VALUE)
   {
     Vec3 fix_axis;
     const float fix_ang = std::sqrt(
         pose.pose.covariance[3 * 6 + 3] + pose.pose.covariance[4 * 6 + 4] + pose.pose.covariance[5 * 6 + 5]);
     const float fix_dist = std::sqrt(
         pose.pose.covariance[0] + pose.pose.covariance[1 * 6 + 1] + pose.pose.covariance[2 * 6 + 2]);
-    ROS_DEBUG("cov: lin %0.3f ang %0.3f", fix_dist, fix_ang);
+    RCLCPP_DEBUG(logger_,"cov: lin %0.3f ang %0.3f", fix_dist, fix_ang);
     if (fix_dist < params_->fix_dist_ &&
         fabs(fix_ang) < params_->fix_ang_)
     {
-      ROS_DEBUG("Localization fixed");
-      status_.convergence_status = mcl_3dl_msgs::Status::CONVERGENCE_STATUS_CONVERGED;
+      RCLCPP_DEBUG(logger_,"Localization fixed");
+      status_.convergence_status = mcl_3dl_msgs::msg::Status::CONVERGENCE_STATUS_CONVERGED;
     }
   }
 
@@ -779,11 +811,11 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
   bool has_matched_subscribers = check_subscribers_cb_ ? check_subscribers_cb_("matched") : false;
   bool has_unmatched_subscribers = check_subscribers_cb_ ? check_subscribers_cb_("unmatched") : false;
 
-  if ((header.stamp > match_output_last_ + *params_->match_output_interval_ ||
-       header.stamp + ros::Duration(1.0) < match_output_last_) &&
+  if ((rclcpp::Time(header.stamp) > match_output_last_ + *params_->match_output_interval_ ||
+       rclcpp::Time(header.stamp) + rclcpp::Duration::from_seconds(1.0) < match_output_last_) &&
       (has_matched_subscribers || has_unmatched_subscribers))
   {
-    match_output_last_ = header.stamp;
+    match_output_last_ = rclcpp::Time(header.stamp);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr pc_match(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr pc_unmatch(new pcl::PointCloud<pcl::PointXYZ>);
@@ -809,7 +841,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     }
     if (has_matched_subscribers && publish_matched_cb_)
     {
-      sensor_msgs::PointCloud2 pc2;
+      sensor_msgs::msg::PointCloud2 pc2;
       pcl::toROSMsg(*pc_match, pc2);
       pc2.header.stamp = header.stamp;
       pc2.header.frame_id = params_->frame_ids_.at("map");
@@ -817,7 +849,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     }
     if (has_unmatched_subscribers && publish_unmatched_cb_)
     {
-      sensor_msgs::PointCloud2 pc2;
+      sensor_msgs::msg::PointCloud2 pc2;
       pcl::toROSMsg(*pc_unmatch, pc2);
       pc2.header.stamp = header.stamp;
       pc2.header.frame_id = params_->frame_ids_.at("map");
@@ -846,10 +878,10 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
   pf_->predict(update_noise_func);
 
   const auto tnow = boost::chrono::high_resolution_clock::now();
-  ROS_DEBUG("MCL (%0.3f sec.)",
+  RCLCPP_DEBUG(logger_,"MCL (%0.3f sec.)",
             boost::chrono::duration<float>(tnow - ts).count());
   const auto err_integ_map = e_max.rot_ * e_max.odom_err_integ_lin_;
-  ROS_DEBUG("odom error integral lin: %0.3f, %0.3f, %0.3f, "
+  RCLCPP_DEBUG(logger_,"odom error integral lin: %0.3f, %0.3f, %0.3f, "
             "ang: %0.3f, %0.3f, %0.3f, "
             "pos: %0.3f, %0.3f, %0.3f, "
             "err on map: %0.3f, %0.3f, %0.3f",
@@ -865,7 +897,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
             err_integ_map.x_,
             err_integ_map.y_,
             err_integ_map.z_);
-  ROS_DEBUG("match ratio min: %0.3f, max: %0.3f, pos: %0.3f, %0.3f, %0.3f",
+  RCLCPP_DEBUG(logger_,"match ratio min: %0.3f, max: %0.3f, pos: %0.3f, %0.3f, %0.3f",
             match_ratio_min,
             match_ratio_max,
             e.pos_.x_,
@@ -873,7 +905,10 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
             e.pos_.z_);
   if (match_ratio_max < params_->match_ratio_thresh_)
   {
-    ROS_WARN_THROTTLE(3.0, "Low match_ratio. Expansion resetting.");
+    {
+      rclcpp::Clock clock(RCL_ROS_TIME);
+      RCLCPP_WARN_THROTTLE(logger_, clock, 3000, "Low match_ratio. Expansion resetting.");
+    }
     pf_->noise(State6DOF(
         Vec3(params_->expansion_var_x_,
              params_->expansion_var_y_,
@@ -881,16 +916,16 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
         Vec3(params_->expansion_var_roll_,
              params_->expansion_var_pitch_,
              params_->expansion_var_yaw_)));
-    status_.status = mcl_3dl_msgs::Status::EXPANSION_RESETTING;
+    status_.status = mcl_3dl_msgs::msg::Status::EXPANSION_RESETTING;
   }
 
-  ros::Time localized_current = ros::Time::now();
-  float dt = (localized_current - localized_last_).toSec();
+  rclcpp::Time localized_current = rclcpp::Clock(RCL_ROS_TIME).now();
+  float dt = (localized_current - localized_last_).seconds();
   if (dt > 1.0)
     dt = 1.0;
   else if (dt < 0.0)
     dt = 0.0;
-  tf_tolerance_base_ = ros::Duration(localize_rate_->in(dt));
+  tf_tolerance_base_ = rclcpp::Duration::from_seconds(localize_rate_->in(dt));
   localized_last_ = localized_current;
 
   if (static_cast<int>(pf_->getParticleSize()) > params_->num_particles_)
@@ -910,7 +945,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
   if (global_localization_fix_cnt_)
   {
     global_localization_fix_cnt_--;
-    status_.status = mcl_3dl_msgs::Status::GLOBAL_LOCALIZATION;
+    status_.status = mcl_3dl_msgs::msg::Status::GLOBAL_LOCALIZATION;
   }
 
   status_.match_ratio = match_ratio_max;
@@ -919,7 +954,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     diag_update_cb_();
 }  // NOLINT(readability/fn_size)
 
-void MCL3dlEngine::processLandmark(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+void MCL3dlEngine::processLandmark(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg)
 {
   NormalLikelihoodNd<float, 6> nd(
       Eigen::Matrix<double, 6, 6>(
@@ -962,7 +997,7 @@ void MCL3dlEngine::processLandmark(const geometry_msgs::PoseWithCovarianceStampe
   publishParticles();
 }
 
-void MCL3dlEngine::processImu(const sensor_msgs::Imu::ConstPtr& msg)
+void MCL3dlEngine::processImu(const sensor_msgs::msg::Imu::ConstSharedPtr& msg)
 {
   const Vec3 acc = f_acc_->in(Vec3(
       msg->linear_acceleration.x,
@@ -972,15 +1007,15 @@ void MCL3dlEngine::processImu(const sensor_msgs::Imu::ConstPtr& msg)
   if (!has_imu_)
   {
     f_acc_->set(Vec3());
-    imu_last_ = msg->header.stamp;
+    imu_last_ = rclcpp::Time(msg->header.stamp);
     has_imu_ = true;
     return;
   }
 
-  const float dt = (msg->header.stamp - imu_last_).toSec();
+  const float dt = (rclcpp::Time(msg->header.stamp) - imu_last_).seconds();
   if (dt < 0.0 || dt > 5.0)
   {
-    ROS_WARN("Detected time jump in imu. Resetting.");
+    RCLCPP_WARN(logger_, "Detected time jump in imu. Resetting.");
     has_imu_ = false;
     return;
   }
@@ -989,14 +1024,21 @@ void MCL3dlEngine::processImu(const sensor_msgs::Imu::ConstPtr& msg)
     Vec3 acc_measure = acc.normalized();
     try
     {
-      geometry_msgs::Vector3 in, out;
+      geometry_msgs::msg::Vector3 in, out;
       in.x = acc_measure.x_;
       in.y = acc_measure.y_;
       in.z = acc_measure.z_;
       // assuming imu frame is rigid on base_link
-      const geometry_msgs::TransformStamped trans = tfbuf_.lookupTransform(
-          params_->frame_ids_.at("base_link"), msg->header.frame_id, ros::Time(0));
+      const geometry_msgs::msg::TransformStamped trans = tfbuf_.lookupTransform(
+          params_->frame_ids_.at("base_link"), msg->header.frame_id, rclcpp::Time(static_cast<int64_t>(0), RCL_ROS_TIME));
+#ifdef IS_ROS1_BUILD
+      tf2::doTransform(
+          static_cast<const geometry_msgs::Vector3&>(in),
+          static_cast<geometry_msgs::Vector3&>(out),
+          static_cast<const geometry_msgs::TransformStamped&>(trans));
+#else
       tf2::doTransform(in, out, trans);
+#endif
       acc_measure = Vec3(out.x, out.y, out.z);
 
       imu_quat_.x_ = msg->orientation.x;
@@ -1025,11 +1067,11 @@ void MCL3dlEngine::processImu(const sensor_msgs::Imu::ConstPtr& msg)
     };
     pf_->measure(imu_measure_func);
 
-    imu_last_ = msg->header.stamp;
+    imu_last_ = rclcpp::Time(msg->header.stamp);
 
     if (params_->fake_odom_)
     {
-      nav_msgs::Odometry::Ptr odom(new nav_msgs::Odometry);
+      nav_msgs::msg::Odometry::SharedPtr odom(new nav_msgs::msg::Odometry);
       odom->header.frame_id = params_->frame_ids_.at("base_link");
       odom->header.stamp = msg->header.stamp;
       odom->pose.pose.orientation.x = imu_quat_.x_;
@@ -1122,17 +1164,17 @@ bool MCL3dlEngine::globalLocalization(std::string& message)
 
 bool MCL3dlEngine::loadPCD(const std::string& pcd_path)
 {
-  ROS_INFO("map received");
+  RCLCPP_INFO(logger_,"map received");
 
   pcl::PointCloud<PointType>::Ptr pc_tmp(new pcl::PointCloud<PointType>);
   if (pcl::io::loadPCDFile<PointType>(pcd_path, *pc_tmp) == -1)
   {
-    ROS_ERROR_STREAM("Couldn't read file " << pcd_path);
+    RCLCPP_ERROR(logger_, "Couldn't read file %s", pcd_path.c_str());
     has_map_ = false;
     return false;
   }
 
-  pcl_conversions::toPCL(ros::Time::now(), pc_tmp->header.stamp);
+  pcl_conversions::toPCL(rclcpp::Clock(RCL_ROS_TIME).now(), pc_tmp->header.stamp);
   pc_tmp->header.frame_id = params_->frame_ids_.at("map");
 
   loadMapCloud(pc_tmp);
@@ -1141,15 +1183,15 @@ bool MCL3dlEngine::loadPCD(const std::string& pcd_path)
 
 void MCL3dlEngine::publishParticles()
 {
-  geometry_msgs::PoseArray pa;
+  geometry_msgs::msg::PoseArray pa;
   if (has_odom_)
     pa.header.stamp = odom_last_ + tf_tolerance_base_ + *params_->tf_tolerance_;
   else
-    pa.header.stamp = ros::Time::now() + tf_tolerance_base_ + *params_->tf_tolerance_;
+    pa.header.stamp = rclcpp::Clock(RCL_ROS_TIME).now() + tf_tolerance_base_ + *params_->tf_tolerance_;
   pa.header.frame_id = params_->frame_ids_.at("map");
   for (size_t i = 0; i < pf_->getParticleSize(); i++)
   {
-    geometry_msgs::Pose pm;
+    geometry_msgs::msg::Pose pm;
     auto p = pf_->getParticle(i);
     p.rot_.normalize();
     pm.position.x = p.pos_.x_;
@@ -1173,12 +1215,12 @@ void MCL3dlEngine::diagnoseStatus(bool& has_error, bool& has_warn,
   has_error = false;
   has_warn = false;
 
-  if (status_.error == mcl_3dl_msgs::Status::ERROR_POINTS_NOT_FOUND)
+  if (status_.error == mcl_3dl_msgs::msg::Status::ERROR_POINTS_NOT_FOUND)
   {
     has_error = true;
     message = "Valid points does not found.";
   }
-  else if (status_.convergence_status == mcl_3dl_msgs::Status::CONVERGENCE_STATUS_LARGE_STD_VALUE)
+  else if (status_.convergence_status == mcl_3dl_msgs::msg::Status::CONVERGENCE_STATUS_LARGE_STD_VALUE)
   {
     has_error = true;
     message = "Too Large Standard Deviation.";
@@ -1198,18 +1240,18 @@ float MCL3dlEngine::getEntropy() const
   return pf_->getEntropy();
 }
 
-mcl_3dl_msgs::Status MCL3dlEngine::getStatus() const
+mcl_3dl_msgs::msg::Status MCL3dlEngine::getStatus() const
 {
   return status_;
 }
 
-geometry_msgs::PoseArray MCL3dlEngine::getParticles() const
+geometry_msgs::msg::PoseArray MCL3dlEngine::getParticles() const
 {
-  geometry_msgs::PoseArray pa;
+  geometry_msgs::msg::PoseArray pa;
   pa.header.frame_id = params_->frame_ids_.at("map");
   for (size_t i = 0; i < pf_->getParticleSize(); i++)
   {
-    geometry_msgs::Pose pm;
+    geometry_msgs::msg::Pose pm;
     auto p = pf_->getParticle(i);
     p.rot_.normalize();
     pm.position.x = p.pos_.x_;
@@ -1239,8 +1281,8 @@ void MCL3dlEngine::loadMapCloud(const pcl::PointCloud<PointType>::Ptr& map_cloud
   accumClear();
   accum_->reset();
 
-  ROS_INFO("map original: %d points", static_cast<int>(map_cloud->points.size()));
-  ROS_INFO("map reduced: %d points", static_cast<int>(pc_map_->points.size()));
+  RCLCPP_INFO(logger_,"map original: %d points", static_cast<int>(map_cloud->points.size()));
+  RCLCPP_INFO(logger_,"map reduced: %d points", static_cast<int>(pc_map_->points.size()));
 
   // Trigger initial map update
   mapUpdateTimer();
@@ -1258,7 +1300,7 @@ MapUpdateResult MCL3dlEngine::mapUpdateTimer()
         pc_map2_.reset(new pcl::PointCloud<PointType>);
       *pc_map2_ = *pc_map_ + *pc_update_;
       pc_update_.reset();
-      pcl_conversions::toPCL(ros::Time::now(), pc_map2_->header.stamp);
+      pcl_conversions::toPCL(rclcpp::Clock(RCL_ROS_TIME).now(), pc_map2_->header.stamp);
     }
     else
     {
@@ -1268,7 +1310,7 @@ MapUpdateResult MCL3dlEngine::mapUpdateTimer()
     }
     kdtree_->setInputCloud(pc_map2_);
 
-    sensor_msgs::PointCloud2 out;
+    sensor_msgs::msg::PointCloud2 out;
     pcl::toROSMsg(*pc_map2_, out);
 
     if (publish_map_cloud_cb_)
@@ -1278,7 +1320,7 @@ MapUpdateResult MCL3dlEngine::mapUpdateTimer()
     result.map_cloud = out;
 
     const auto tnow = boost::chrono::high_resolution_clock::now();
-    ROS_DEBUG("Map update (%0.3f sec.)",
+    RCLCPP_DEBUG(logger_,"Map update (%0.3f sec.)",
               boost::chrono::duration<float>(tnow - ts).count());
   }
   return result;

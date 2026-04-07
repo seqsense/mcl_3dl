@@ -34,10 +34,14 @@
 #include <memory>
 #include <string>
 
-#include <dynamic_reconfigure/server.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
+#ifdef IS_ROS1_BUILD
+#include <ros/ros.h>
+#include <dynamic_reconfigure/server.h>
 #include <mcl_3dl/MCL3DLParamsConfig.h>
+#endif
+
 #include <mcl_3dl/quat.h>
 #include <mcl_3dl/state_6dof.h>
 #include <mcl_3dl/vec3.h>
@@ -135,7 +139,9 @@ class Parameters
 {
 public:
   Parameters();
+#ifdef IS_ROS1_BUILD
   bool load(ros::NodeHandle& nh);
+#endif
 
   bool fake_imu_, fake_odom_;
   double map_downsample_x_;
@@ -172,7 +178,7 @@ public:
   double odom_err_lin_ang_;
   double odom_err_ang_lin_;
   double odom_err_ang_ang_;
-  std::shared_ptr<ros::Duration> map_update_interval_;
+  std::shared_ptr<rclcpp::Duration> map_update_interval_;
   int num_particles_;
   int skip_measure_;
   int accum_cloud_;
@@ -186,8 +192,8 @@ public:
   double odom_err_integ_lin_sigma_;
   double odom_err_integ_ang_tc_;
   double odom_err_integ_ang_sigma_;
-  std::shared_ptr<ros::Duration> match_output_interval_;
-  std::shared_ptr<ros::Duration> tf_tolerance_;
+  std::shared_ptr<rclcpp::Duration> match_output_interval_;
+  std::shared_ptr<rclcpp::Duration> tf_tolerance_;
   double lpf_step_;
   double acc_lpf_step_;
   std::array<float, 4> dist_weight_;
@@ -203,9 +209,11 @@ public:
   std::shared_ptr<LidarMeasurementModelLikelihoodParameters> lidar_measurement_likelihood_params_;
   std::shared_ptr<LidarMeasurementModelBeamParameters> lidar_measurement_beam_params_;
 
+#ifdef IS_ROS1_BUILD
 private:
   std::unique_ptr<dynamic_reconfigure::Server<MCL3DLParamsConfig>> parameter_server_;
   void cbParameter(const MCL3DLParamsConfig& config, const uint32_t /* level */);
+#endif
 };
 }  // namespace mcl_3dl
 

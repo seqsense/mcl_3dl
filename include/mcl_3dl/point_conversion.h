@@ -30,16 +30,43 @@
 #ifndef MCL_3DL_POINT_CONVERSION_H
 #define MCL_3DL_POINT_CONVERSION_H
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include <mcl_3dl/point_types.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl_ros/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
 
-#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#ifdef IS_ROS1_BUILD
 #include <sensor_msgs/point_cloud_conversion.h>
+namespace mcl_3dl
+{
+namespace detail
+{
+using sensor_msgs::getPointCloud2FieldIndex;
+}  // namespace detail
+}  // namespace mcl_3dl
+#else
+namespace mcl_3dl
+{
+namespace detail
+{
+inline int getPointCloud2FieldIndex(
+    const sensor_msgs::msg::PointCloud2& cloud,
+    const std::string& field_name)
+{
+  for (size_t d = 0; d < cloud.fields.size(); ++d)
+  {
+    if (cloud.fields[d].name == field_name)
+      return static_cast<int>(d);
+  }
+  return -1;
+}
+}  // namespace detail
+}  // namespace mcl_3dl
+#endif
 
 namespace mcl_3dl
 {
@@ -47,13 +74,13 @@ namespace
 {
 template <typename PointTIn, typename PointTOut>
 bool fromROSMsgImpl(
-    const sensor_msgs::PointCloud2& msg, pcl::PointCloud<PointTOut>& pc)
+    const sensor_msgs::msg::PointCloud2& msg, pcl::PointCloud<PointTOut>& pc)
 {
   typename pcl::PointCloud<PointTIn>::Ptr raw(new typename pcl::PointCloud<PointTIn>);
   pcl::fromROSMsg(msg, *raw);
   if (raw->points.size() == 0)
   {
-    ROS_ERROR("Given PointCloud2 is empty");
+    RCLCPP_ERROR(rclcpp::get_logger("mcl_3dl"), "Given PointCloud2 is empty");
     return false;
   }
   pcl::copyPointCloud(*raw, pc);
@@ -63,17 +90,17 @@ bool fromROSMsgImpl(
 
 template <typename PointT>
 bool fromROSMsg(
-    const sensor_msgs::PointCloud2& msg, pcl::PointCloud<PointT>& pc)
+    const sensor_msgs::msg::PointCloud2& msg, pcl::PointCloud<PointT>& pc)
 {
-  const int x_idx = getPointCloud2FieldIndex(msg, "x");
-  const int y_idx = getPointCloud2FieldIndex(msg, "y");
-  const int z_idx = getPointCloud2FieldIndex(msg, "z");
-  const int intensity_idx = getPointCloud2FieldIndex(msg, "intensity");
-  const int label_idx = getPointCloud2FieldIndex(msg, "label");
+  const int x_idx = detail::getPointCloud2FieldIndex(msg, "x");
+  const int y_idx = detail::getPointCloud2FieldIndex(msg, "y");
+  const int z_idx = detail::getPointCloud2FieldIndex(msg, "z");
+  const int intensity_idx = detail::getPointCloud2FieldIndex(msg, "intensity");
+  const int label_idx = detail::getPointCloud2FieldIndex(msg, "label");
 
   if (x_idx == -1 || y_idx == -1 || z_idx == -1)
   {
-    ROS_ERROR("Given PointCloud2 doesn't have x, y, z fields");
+    RCLCPP_ERROR(rclcpp::get_logger("mcl_3dl"), "Given PointCloud2 doesn't have x, y, z fields");
     return false;
   }
   if (intensity_idx != -1)
