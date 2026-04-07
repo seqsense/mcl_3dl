@@ -91,7 +91,7 @@ if($ENV{ROS_VERSION} EQUAL 1)
   add_dependencies(mcl_3dl_engine ${PROJECT_NAME}_gencfg)
 
   add_executable(mcl_3dl
-    src/mcl_3dl.cpp
+    src/ros1_mcl_3dl.cpp
   )
   target_link_libraries(mcl_3dl mcl_3dl_engine ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${PCL_LIBRARIES})
   add_dependencies(mcl_3dl ${PROJECT_NAME}_gencfg)
@@ -148,6 +148,15 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
   )
   target_include_directories(mcl_3dl_engine SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
   target_link_libraries(mcl_3dl_engine ${Boost_LIBRARIES} ${PCL_LIBRARIES})
+
+  # ROS2 component node
+  ament_auto_add_library(mcl_3dl_node SHARED
+    src/ros2_mcl_3dl_node.cpp
+  )
+  target_include_directories(mcl_3dl_node SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
+  target_link_libraries(mcl_3dl_node mcl_3dl_engine ${PCL_LIBRARIES})
+  rclcpp_components_register_node(
+    mcl_3dl_node PLUGIN "mcl_3dl::MCL3dlNode" EXECUTABLE mcl_3dl_exec)
 
   if(BUILD_TESTING)
     find_package(ament_cmake_gtest REQUIRED)
