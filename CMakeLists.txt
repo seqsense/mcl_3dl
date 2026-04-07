@@ -37,6 +37,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
   INCLUDE_DIRS include
+  LIBRARIES mcl_3dl_engine
   CATKIN_DEPENDS ${CATKIN_DEPENDS}
 )
 
@@ -74,15 +75,21 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O1")
 add_definitions(-DPCL_NO_PRECOMPILE)
 
 
-add_executable(mcl_3dl
+add_library(mcl_3dl_engine
   src/cloud_accum.cpp
   src/lidar_measurement_model_beam.cpp
   src/lidar_measurement_model_likelihood.cpp
-  src/mcl_3dl.cpp
+  src/mcl_3dl_engine.cpp
   src/parameters.cpp
   src/point_types.cpp
 )
-target_link_libraries(mcl_3dl ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(mcl_3dl_engine ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${PCL_LIBRARIES})
+add_dependencies(mcl_3dl_engine ${PROJECT_NAME}_gencfg)
+
+add_executable(mcl_3dl
+  src/mcl_3dl.cpp
+)
+target_link_libraries(mcl_3dl mcl_3dl_engine ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${PCL_LIBRARIES})
 add_dependencies(mcl_3dl ${PROJECT_NAME}_gencfg)
 
 
@@ -99,7 +106,7 @@ if(CATKIN_ENABLE_TESTING)
 endif()
 
 
-install(TARGETS mcl_3dl
+install(TARGETS mcl_3dl_engine mcl_3dl
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
