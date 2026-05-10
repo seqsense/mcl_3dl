@@ -165,25 +165,25 @@ public:
   bool configure(Parameters& params);
 
   /// Process incoming map pointcloud
-  void processMapCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg);
+  void processMapCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg);
 
   /// Process incoming map update pointcloud
-  void processMapCloudUpdate(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg);
+  void processMapCloudUpdate(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg);
 
   /// Process incoming initial pose
-  void processPosition(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg);
+  void processPosition(const std::shared_ptr<const geometry_msgs::msg::PoseWithCovarianceStamped>& msg);
 
   /// Process incoming odometry
-  void processOdom(const nav_msgs::msg::Odometry::ConstSharedPtr& msg);
+  void processOdom(const std::shared_ptr<const nav_msgs::msg::Odometry>& msg);
 
   /// Process incoming pointcloud
-  void processCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg);
+  void processCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg);
 
   /// Process incoming IMU data
-  void processImu(const sensor_msgs::msg::Imu::ConstSharedPtr& msg);
+  void processImu(const std::shared_ptr<const sensor_msgs::msg::Imu>& msg);
 
   /// Process incoming landmark measurement
-  void processLandmark(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg);
+  void processLandmark(const std::shared_ptr<const geometry_msgs::msg::PoseWithCovarianceStamped>& msg);
 
   /// Handle resize particle service
   bool resizeParticle(int size);
@@ -308,7 +308,7 @@ protected:
   };
 
   void measure();
-  bool accumCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg);
+  bool accumCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg);
   void accumClear();
   void loadMapCloud(const pcl::PointCloud<PointType>::Ptr& map_cloud);
   void publishParticles();

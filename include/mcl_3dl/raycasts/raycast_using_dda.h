@@ -53,7 +53,7 @@ class RaycastUsingDDA : public Raycast<POINT_TYPE>
   using typename Raycast<POINT_TYPE>::CastResult;
 
 public:
-  RaycastUsingDDA(const double map_grid_size_x, const double map_grid_size_y, const double map_grid_size_z,
+  RaycastUsingDDA(const double map_grid_size_x, const double map_grid_size_y, const double /*map_grid_size_z*/,
                   const double dda_grid_size, const double ray_angle_half, const double hit_tolerance)
     : Raycast<POINT_TYPE>()
     , min_dist_thr_sq_(std::pow(map_grid_size_x, 2) + std::pow(map_grid_size_y, 2) + std::pow(map_grid_size_y, 2))

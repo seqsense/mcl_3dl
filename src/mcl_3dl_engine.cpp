@@ -154,7 +154,7 @@ bool MCL3dlEngine::configure(Parameters& params)
   return true;
 }
 
-void MCL3dlEngine::processMapCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
+void MCL3dlEngine::processMapCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg)
 {
   RCLCPP_INFO(logger_,"map received");
   pcl::PointCloud<PointType>::Ptr pc_tmp(new pcl::PointCloud<PointType>);
@@ -170,7 +170,7 @@ void MCL3dlEngine::processMapCloud(const sensor_msgs::msg::PointCloud2::ConstSha
   loadMapCloud(pc_tmp);
 }
 
-void MCL3dlEngine::processMapCloudUpdate(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
+void MCL3dlEngine::processMapCloudUpdate(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg)
 {
   RCLCPP_INFO(logger_,"map_update received");
   pcl::PointCloud<PointType>::Ptr pc_tmp(new pcl::PointCloud<PointType>);
@@ -184,7 +184,7 @@ void MCL3dlEngine::processMapCloudUpdate(const sensor_msgs::msg::PointCloud2::Co
   ds.filter(*pc_update_);
 }
 
-void MCL3dlEngine::processPosition(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg)
+void MCL3dlEngine::processPosition(const std::shared_ptr<const geometry_msgs::msg::PoseWithCovarianceStamped>& msg)
 {
   const double len2 =
       msg->pose.pose.orientation.x * msg->pose.pose.orientation.x +
@@ -236,7 +236,7 @@ void MCL3dlEngine::processPosition(const geometry_msgs::msg::PoseWithCovarianceS
   publishParticles();
 }
 
-void MCL3dlEngine::processOdom(const nav_msgs::msg::Odometry::ConstSharedPtr& msg)
+void MCL3dlEngine::processOdom(const std::shared_ptr<const nav_msgs::msg::Odometry>& msg)
 {
   odom_ =
       State6DOF(
@@ -275,7 +275,7 @@ void MCL3dlEngine::processOdom(const nav_msgs::msg::Odometry::ConstSharedPtr& ms
   if (params_->fake_imu_)
   {
     const Vec3 accel = odom_.rot_ * Vec3(0.0, 0.0, 1.0);
-    sensor_msgs::msg::Imu::SharedPtr imu(new sensor_msgs::msg::Imu);
+    auto imu = std::make_shared<sensor_msgs::msg::Imu>();
     imu->header = msg->header;
     imu->linear_acceleration.x = accel.x_;
     imu->linear_acceleration.y = accel.y_;
@@ -285,7 +285,7 @@ void MCL3dlEngine::processOdom(const nav_msgs::msg::Odometry::ConstSharedPtr& ms
   }
 }
 
-void MCL3dlEngine::processCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
+void MCL3dlEngine::processCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg)
 {
   status_ = mcl_3dl_msgs::msg::Status();
   status_.header.stamp = rclcpp::Clock(RCL_ROS_TIME).now();
@@ -311,7 +311,7 @@ void MCL3dlEngine::accumClear()
   pc_accum_header_.clear();
 }
 
-bool MCL3dlEngine::accumCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
+bool MCL3dlEngine::accumCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg)
 {
   sensor_msgs::msg::PointCloud2 pc_bl;
   try
@@ -475,7 +475,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
 
   if (static_cast<int>(pf_->getParticleSize()) > params_->num_particles_)
   {
-    const auto bias_func = [](const State6DOF& s, float& p_bias) -> void
+    const auto bias_func = [](const State6DOF& /*s*/, float& p_bias) -> void
     {
       p_bias = 1.0;
     };
@@ -954,7 +954,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     diag_update_cb_();
 }  // NOLINT(readability/fn_size)
 
-void MCL3dlEngine::processLandmark(const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg)
+void MCL3dlEngine::processLandmark(const std::shared_ptr<const geometry_msgs::msg::PoseWithCovarianceStamped>& msg)
 {
   NormalLikelihoodNd<float, 6> nd(
       Eigen::Matrix<double, 6, 6>(
@@ -997,7 +997,7 @@ void MCL3dlEngine::processLandmark(const geometry_msgs::msg::PoseWithCovarianceS
   publishParticles();
 }
 
-void MCL3dlEngine::processImu(const sensor_msgs::msg::Imu::ConstSharedPtr& msg)
+void MCL3dlEngine::processImu(const std::shared_ptr<const sensor_msgs::msg::Imu>& msg)
 {
   const Vec3 acc = f_acc_->in(Vec3(
       msg->linear_acceleration.x,
@@ -1071,7 +1071,7 @@ void MCL3dlEngine::processImu(const sensor_msgs::msg::Imu::ConstSharedPtr& msg)
 
     if (params_->fake_odom_)
     {
-      nav_msgs::msg::Odometry::SharedPtr odom(new nav_msgs::msg::Odometry);
+      auto odom = std::make_shared<nav_msgs::msg::Odometry>();
       odom->header.frame_id = params_->frame_ids_.at("base_link");
       odom->header.stamp = msg->header.stamp;
       odom->pose.pose.orientation.x = imu_quat_.x_;

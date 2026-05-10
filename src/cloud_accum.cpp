@@ -39,10 +39,10 @@
 namespace mcl_3dl
 {
 void CloudAccumulationLogicPassThrough::push(
-    const std::string& key,
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg,
+    const std::string& /*key*/,
+    const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg,
     std::function<void()> process,
-    std::function<bool(const sensor_msgs::msg::PointCloud2::ConstSharedPtr&)> accumulate,
+    std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>&)> accumulate,
     std::function<void()> clear)
 {
   clear();
@@ -52,9 +52,9 @@ void CloudAccumulationLogicPassThrough::push(
 
 void CloudAccumulationLogic::push(
     const std::string& key,
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg,
+    const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg,
     std::function<void()> process,
-    std::function<bool(const sensor_msgs::msg::PointCloud2::ConstSharedPtr&)> accumulate,
+    std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>&)> accumulate,
     std::function<void()> clear)
 {
   // If total count of the accumulated cloud exceeds limit,

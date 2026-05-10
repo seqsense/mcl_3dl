@@ -52,7 +52,7 @@ public:
 
   typename pcl::PointCloud<POINT_TYPE>::Ptr sample(
       const typename pcl::PointCloud<POINT_TYPE>::ConstPtr& pc,
-      const size_t num) const final
+      const size_t /*num*/) const final
   {
     typename pcl::PointCloud<POINT_TYPE>::Ptr output(
         new pcl::PointCloud<POINT_TYPE>);

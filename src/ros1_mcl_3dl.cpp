@@ -33,13 +33,13 @@
 
 #include <ros/ros.h>
 
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <sensor_msgs/msg/imu.hpp>
-#include <geometry_msgs/msg/pose_array.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
-#include <mcl_3dl_msgs/msg/status.hpp>
+#include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <mcl_3dl_msgs/Status.h>
 #include <mcl_3dl_msgs/ResizeParticle.h>
 #include <mcl_3dl_msgs/LoadPCD.h>
 #include <std_srvs/Trigger.h>
@@ -48,7 +48,8 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 
-#include <rclcpp/rclcpp.hpp>
+#include <sq_ros1_compat/logger.hpp>
+#include <sq_ros1_compat/msg_ptr.hpp>
 
 #include <mcl_3dl/mcl_3dl_engine.h>
 #include <mcl_3dl/parameters.h>
@@ -63,7 +64,7 @@ public:
   MCL3dlNode()
     : pnh_("~")
     , tfl_(tfbuf_, true, ros::TransportHints().tcpNoDelay(true))
-    , engine_(tfbuf_, rclcpp::get_logger("mcl_3dl"))
+    , engine_(tfbuf_, sq_ros1_compat::get_logger("mcl_3dl"))
   {
   }
 
@@ -229,34 +230,35 @@ protected:
     return false;
   }
 
-  // ROS callback wrappers - simply forward to engine
+  // ROS callback wrappers - convert boost::shared_ptr to std::shared_ptr
+  // (aliasing wrap, no deep copy) then forward to engine.
   void cbMapcloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
-    engine_.processMapCloud(msg);
+    engine_.processMapCloud(sq_ros1_compat::to_std(msg));
   }
   void cbMapcloudUpdate(const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
-    engine_.processMapCloudUpdate(msg);
+    engine_.processMapCloudUpdate(sq_ros1_compat::to_std(msg));
   }
   void cbPosition(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
   {
-    engine_.processPosition(msg);
+    engine_.processPosition(sq_ros1_compat::to_std(msg));
   }
   void cbOdom(const nav_msgs::Odometry::ConstPtr& msg)
   {
-    engine_.processOdom(msg);
+    engine_.processOdom(sq_ros1_compat::to_std(msg));
   }
   void cbCloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
-    engine_.processCloud(msg);
+    engine_.processCloud(sq_ros1_compat::to_std(msg));
   }
   void cbImu(const sensor_msgs::Imu::ConstPtr& msg)
   {
-    engine_.processImu(msg);
+    engine_.processImu(sq_ros1_compat::to_std(msg));
   }
   void cbLandmark(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
   {
-    engine_.processLandmark(msg);
+    engine_.processLandmark(sq_ros1_compat::to_std(msg));
   }
 
   bool cbResizeParticle(mcl_3dl_msgs::ResizeParticleRequest& request,

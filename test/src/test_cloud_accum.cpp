@@ -27,6 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <memory>
 #include <vector>
 #include <string>
 
@@ -40,19 +41,19 @@ TEST(CloudAccumulationLogic, PassThrough)
 {
   mcl_3dl::CloudAccumulationLogicPassThrough accum;
   std::string seq;
-  const sensor_msgs::msg::PointCloud2::SharedPtr msg(new sensor_msgs::msg::PointCloud2);
+  const auto msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
   const auto process = [&seq]()
   {
     seq += "p";
   };
-  const auto accumulateOK = [&seq, msg](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg2) -> bool
+  const auto accumulateOK = [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg2) -> bool
   {
     EXPECT_EQ(msg, msg2);
     seq += "a";
     return true;
   };
-  const auto accumulateNG = [&seq, msg](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg2) -> bool
+  const auto accumulateNG = [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg2) -> bool
   {
     EXPECT_EQ(msg, msg2);
     seq += "a'";
@@ -73,19 +74,19 @@ TEST(CloudAccumulationLogic, Accumulate)
 {
   mcl_3dl::CloudAccumulationLogic accum(2, 6);
   std::string seq;
-  const sensor_msgs::msg::PointCloud2::SharedPtr msg(new sensor_msgs::msg::PointCloud2);
+  const auto msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
   const auto process = [&seq]()
   {
     seq += "p";
   };
-  const auto accumulateOK = [&seq, msg](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg2) -> bool
+  const auto accumulateOK = [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg2) -> bool
   {
     EXPECT_EQ(msg, msg2);
     seq += "a";
     return true;
   };
-  const auto accumulateNG = [&seq, msg](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg2) -> bool
+  const auto accumulateNG = [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg2) -> bool
   {
     EXPECT_EQ(msg, msg2);
     seq += "a'";

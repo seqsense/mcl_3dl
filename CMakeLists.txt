@@ -9,7 +9,7 @@ if($ENV{ROS_VERSION} EQUAL 1)
 
   set(CATKIN_DEPENDS
     roscpp
-    ros1_rclcpp_compat
+    sq_ros1_rclcpp_compat
 
     pcl_ros
     tf2
@@ -128,6 +128,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
   find_package(ament_cmake_auto REQUIRED)
   ament_auto_find_build_dependencies()
 
+  find_package(Eigen3 REQUIRED)
   find_package(PCL 1.12.0 REQUIRED
     COMPONENTS
       core
@@ -146,7 +147,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     src/parameters.cpp
     src/point_types.cpp
   )
-  target_include_directories(mcl_3dl_engine SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
+  target_include_directories(mcl_3dl_engine SYSTEM PRIVATE ${PCL_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
   target_link_libraries(mcl_3dl_engine ${Boost_LIBRARIES} ${PCL_LIBRARIES})
 
   # ROS2 component node
@@ -180,10 +181,12 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
 
     ament_add_gtest(test_nd test/src/test_nd.cpp)
     target_include_directories(test_nd PRIVATE include)
+    target_include_directories(test_nd SYSTEM PRIVATE ${EIGEN3_INCLUDE_DIR})
     target_compile_options(test_nd PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 
     ament_add_gtest(test_pf test/src/test_pf.cpp)
     target_include_directories(test_pf PRIVATE include)
+    target_include_directories(test_pf SYSTEM PRIVATE ${EIGEN3_INCLUDE_DIR})
     target_compile_options(test_pf PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 
     ament_add_gtest(test_point_types test/src/test_point_types.cpp)
@@ -202,25 +205,25 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
 
     ament_add_gtest(test_state_6dof test/src/test_state_6dof.cpp)
     target_include_directories(test_state_6dof PRIVATE include)
-    target_include_directories(test_state_6dof SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
+    target_include_directories(test_state_6dof SYSTEM PRIVATE ${PCL_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
     ament_target_dependencies(test_state_6dof rclcpp)
     target_compile_options(test_state_6dof PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 
     ament_add_gtest(test_imu_measurement_model_gravity test/src/test_imu_measurement_model_gravity.cpp)
     target_include_directories(test_imu_measurement_model_gravity PRIVATE include)
-    target_include_directories(test_imu_measurement_model_gravity SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
+    target_include_directories(test_imu_measurement_model_gravity SYSTEM PRIVATE ${PCL_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
     ament_target_dependencies(test_imu_measurement_model_gravity rclcpp)
     target_compile_options(test_imu_measurement_model_gravity PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 
     ament_add_gtest(test_motion_prediction_model_differential_drive test/src/test_motion_prediction_model_differential_drive.cpp)
     target_include_directories(test_motion_prediction_model_differential_drive PRIVATE include)
-    target_include_directories(test_motion_prediction_model_differential_drive SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
+    target_include_directories(test_motion_prediction_model_differential_drive SYSTEM PRIVATE ${PCL_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
     ament_target_dependencies(test_motion_prediction_model_differential_drive rclcpp)
     target_compile_options(test_motion_prediction_model_differential_drive PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 
     ament_add_gtest(test_noise_generator test/src/test_noise_generator.cpp)
     target_include_directories(test_noise_generator PRIVATE include)
-    target_include_directories(test_noise_generator SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
+    target_include_directories(test_noise_generator SYSTEM PRIVATE ${PCL_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
     ament_target_dependencies(test_noise_generator rclcpp)
     target_compile_options(test_noise_generator PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 

@@ -46,7 +46,7 @@ public:
   virtual typename pcl::PointCloud<POINT_TYPE>::Ptr sample(
       const typename pcl::PointCloud<POINT_TYPE>::ConstPtr& pc, const size_t num) const = 0;
   virtual void setParticleStatistics(
-      const State6DOF& mean, const std::vector<State6DOF>& covariances)
+      const State6DOF& /*mean*/, const std::vector<State6DOF>& /*covariances*/)
   {
   }
   virtual void refreshParameters()

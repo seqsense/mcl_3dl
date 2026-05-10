@@ -334,7 +334,7 @@ TEST(Pf, Entropy)
   // no uncertainty
   {
     unsigned int idx = 0;
-    auto likelihood = [&idx](const State& s) -> float
+    auto likelihood = [&idx](const State& /*s*/) -> float
     {
       return idx++ == 0 ? 1.0 : 0.0;
     };
@@ -345,7 +345,7 @@ TEST(Pf, Entropy)
 
   // uniform distribution
   {
-    auto likelihood = [](const State& s) -> float
+    auto likelihood = [](const State& /*s*/) -> float
     {
       return 0.1;
     };
@@ -358,7 +358,7 @@ TEST(Pf, Entropy)
   // i.e. less uncertainty that the other
   {
     unsigned int idx = 0;
-    auto likelihood1 = [&idx](const State& s) -> float
+    auto likelihood1 = [&idx](const State& /*s*/) -> float
     {
       float lk = 0.025;
       if (idx >= 4 && idx < 6)
@@ -373,7 +373,7 @@ TEST(Pf, Entropy)
     const float entropy1 = pf.getEntropy();
 
     idx = 0;
-    auto likelihood2 = [&idx](const State& s) -> float
+    auto likelihood2 = [&idx](const State& /*s*/) -> float
     {
       float lk = 0.025;
       if (idx >= 2 && idx < 8)

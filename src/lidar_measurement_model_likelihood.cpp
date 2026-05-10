@@ -105,7 +105,7 @@ LidarMeasurementModelLikelihood::filter(
 LidarMeasurementResult LidarMeasurementModelLikelihood::measure(
     typename ChunkedKdtree<LidarMeasurementModelBase::PointType>::Ptr& kdtree,
     const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr& pc,
-    const std::vector<Vec3>& origins,
+    const std::vector<Vec3>& /*origins*/,
     const State6DOF& s) const
 {
   if (!pc)
