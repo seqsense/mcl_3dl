@@ -48,6 +48,9 @@
   <test_depend condition="$ROS_VERSION == 2">launch_testing</test_depend>
   <test_depend condition="$ROS_VERSION == 2">launch_testing_ament_cmake</test_depend>
   <test_depend condition="$ROS_VERSION == 2">launch_testing_ros</test_depend>
+  <test_depend condition="$ROS_VERSION == 2">ros2bag</test_depend>
+  <test_depend condition="$ROS_VERSION == 2">rosbag2_storage_default_plugins</test_depend>
+  <test_depend condition="$ROS_VERSION == 2">yaml-cpp</test_depend>
 
   <export>
     <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>

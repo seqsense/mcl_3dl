@@ -332,6 +332,64 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     target_compile_options(ros2_test_parameters PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_parameters DESTINATION lib/${PROJECT_NAME})
     add_launch_test(test/tests/test_parameters_launch.py TIMEOUT 30)
+
+    # ----- Heavy bag-replay tests (gated by MCL_3DL_EXTRA_TESTS) -----
+    # ROS 2 port of localization_rostest.test.in / tf_rostest.test.in.
+    # Requires the short_test3 bag (already converted to rosbag2 .db3) and
+    # short_test_ref.topic (YAML dump of nav_msgs/Path) to be present under
+    # test/data/. The bag is ~230MB so we intentionally do not download it
+    # automatically; place the files manually or override at run time via
+    # the MCL_3DL_TEST_DATA_DIR environment variable.
+    if(MCL_3DL_EXTRA_TESTS OR "$ENV{MCL_3DL_EXTRA_TESTS}" STREQUAL "ON")
+      find_package(yaml_cpp_vendor QUIET)
+      if(NOT yaml_cpp_vendor_FOUND)
+        find_package(yaml-cpp REQUIRED)
+      endif()
+
+      ament_add_gtest_executable(ros2_compare_pose test/src/ros2_compare_pose.cpp)
+      target_include_directories(ros2_compare_pose PRIVATE include)
+      ament_target_dependencies(ros2_compare_pose
+        rclcpp geometry_msgs nav_msgs tf2 tf2_geometry_msgs)
+      target_link_libraries(ros2_compare_pose yaml-cpp)
+      target_compile_options(ros2_compare_pose PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
+      install(TARGETS ros2_compare_pose DESTINATION lib/${PROJECT_NAME})
+
+      ament_add_gtest_executable(ros2_compare_tf test/src/ros2_compare_tf.cpp)
+      target_include_directories(ros2_compare_tf PRIVATE include)
+      ament_target_dependencies(ros2_compare_tf
+        rclcpp geometry_msgs tf2 tf2_geometry_msgs tf2_ros)
+      target_compile_options(ros2_compare_tf PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
+      install(TARGETS ros2_compare_tf DESTINATION lib/${PROJECT_NAME})
+
+      # Install the bag and ref Path file to share/ so launch.py can find
+      # them via ament_index. Override at run time with MCL_3DL_TEST_DATA_DIR
+      # if you want to point at an out-of-tree copy.
+      if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/data/short_test3"
+         AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/data/short_test_ref.topic")
+        install(DIRECTORY test/data/short_test3
+                DESTINATION share/${PROJECT_NAME}/test_data)
+        install(FILES test/data/short_test_ref.topic
+                DESTINATION share/${PROJECT_NAME}/test_data)
+        add_launch_test(test/tests/test_localization_launch.py TIMEOUT 420)
+        add_launch_test(test/tests/test_tf_launch.py TIMEOUT 150)
+      else()
+        message(WARNING
+          "MCL_3DL_EXTRA_TESTS is ON but test/data/short_test3 or "
+          "short_test_ref.topic is missing under "
+          "${CMAKE_CURRENT_SOURCE_DIR}/test/data/. Skipping bag-replay tests. "
+          "Download short_test3.bag and short_test_ref.topic from "
+          "https://openspur.org/~atsushi.w/dataset/mcl_3dl/ , then convert "
+          "the bag to rosbag2 (e.g. `rosbags-convert --src short_test3.bag "
+          "--dst short_test3 --dst-version 4 --src-typestore ros1_noetic "
+          "--dst-typestore ros2_humble`) and place the resulting "
+          "short_test3/ directory and short_test_ref.topic under the path "
+          "above.")
+      endif()
+    else()
+      message(STATUS
+        "mcl_3dl: bag-replay tests skipped. Pass -DMCL_3DL_EXTRA_TESTS=ON or "
+        "set MCL_3DL_EXTRA_TESTS=ON in the environment to enable them.")
+    endif()
   endif()
 
   ament_auto_package()
