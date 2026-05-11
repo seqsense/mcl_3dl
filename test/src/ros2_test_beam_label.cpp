@@ -227,6 +227,12 @@ TEST_F(BeamLabel, SemiTransparentWall)
 
   ASSERT_TRUE(static_cast<bool>(pose_cov_));
 
+  // Tolerance is intentionally 0.2 m (looser than the ROS 1 version's
+  // 0.1 m). At 0.1 m this test was flaky in ROS 2 (~15% failure rate
+  // in standalone runs; one failure observed at x error = 0.102 m,
+  // i.e. just 2 mm over the threshold). The underlying estimator is
+  // unchanged from ROS 1; the flakiness comes from this being a
+  // stochastic particle-filter test running over only ~30 iterations.
   ASSERT_NEAR(pose_cov_->pose.pose.position.x, offset_x, 0.2);
   ASSERT_NEAR(pose_cov_->pose.pose.position.y, offset_y, 0.2);
   ASSERT_NEAR(pose_cov_->pose.pose.position.z, offset_z, 0.2);
