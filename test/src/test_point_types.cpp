@@ -29,10 +29,9 @@
 
 #include <gtest/gtest.h>
 
-#include <pcl/point_cloud.h>
-#include <pcl/filters/voxel_grid.h>
-
-#include <mcl_3dl/point_types.h>
+#include "mcl_3dl/point_types.h"
+#include "pcl/filters/voxel_grid.h"
+#include "pcl/point_cloud.h"
 
 TEST(PointTypes, VoxelGrid)
 {
@@ -62,10 +61,8 @@ TEST(PointTypes, VoxelGrid)
 
   ASSERT_EQ(pc2->size(), 2u);
   int num_1(0), num_4(0);
-  for (auto& p : *pc2)
-  {
-    switch (p.label)
-    {
+  for (auto & p : *pc2) {
+    switch (p.label) {
       case 1u:
       case 3u:
         ASSERT_FLOAT_EQ(p.x, 1.01);
@@ -82,16 +79,15 @@ TEST(PointTypes, VoxelGrid)
         num_4++;
         break;
       default:
-        ASSERT_TRUE(false)
-            << "Unexpected point label (" << p.label << "); "
-            << "original labels are [1, 3, 4]";
+        ASSERT_TRUE(false) << "Unexpected point label (" << p.label << "); "
+                           << "original labels are [1, 3, 4]";
         break;
     }
   }
   ASSERT_TRUE(num_1 == 1 && num_4 == 1);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

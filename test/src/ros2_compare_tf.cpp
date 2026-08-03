@@ -33,20 +33,19 @@
 // at the same stamp via tf2_ros::Buffer, and asserts that the looked-up
 // position differs from the published amcl_pose by < 5cm.
 
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <cstdio>
 #include <memory>
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <geometry_msgs/msg/transform_stamped.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
-
-#include <gtest/gtest.h>
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
 
 class CompareTfFixture : public ::testing::Test
 {
@@ -54,10 +53,7 @@ protected:
   static rclcpp::Node::SharedPtr node_;
 
 public:
-  static void SetNode(const rclcpp::Node::SharedPtr& node)
-  {
-    node_ = node;
-  }
+  static void SetNode(const rclcpp::Node::SharedPtr & node) { node_ = node; }
 };
 
 rclcpp::Node::SharedPtr CompareTfFixture::node_ = nullptr;
@@ -76,22 +72,17 @@ TEST_F(CompareTfFixture, Compare)
   bool finished = false;
 
   auto cb_pose = [&tfbuf, &cnt, &cnt_max, &tf_ex_cnt, &finished](
-                     const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg)
-  {
+                   const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr & msg) {
     geometry_msgs::msg::PoseStamped pose;
-    try
-    {
+    try {
       geometry_msgs::msg::PoseStamped pose_bl;
       pose_bl.header.frame_id = "base_link";
       pose_bl.header.stamp = msg->header.stamp;
       pose_bl.pose.orientation.w = 1.0;
       const auto trans = tfbuf.lookupTransform(
-          "map", pose_bl.header.frame_id, pose_bl.header.stamp,
-          tf2::durationFromSec(0.1));
+        "map", pose_bl.header.frame_id, pose_bl.header.stamp, tf2::durationFromSec(0.1));
       tf2::doTransform(pose_bl, pose, trans);
-    }
-    catch (const tf2::TransformException& e)
-    {
+    } catch (const tf2::TransformException & e) {
       tf_ex_cnt++;
       return;
     }
@@ -99,24 +90,22 @@ TEST_F(CompareTfFixture, Compare)
     const float y_error = pose.pose.position.y - msg->pose.pose.position.y;
     const float z_error = pose.pose.position.z - msg->pose.pose.position.z;
     const float error =
-        std::sqrt(std::pow(x_error, 2) + std::pow(y_error, 2) + std::pow(z_error, 2));
+      std::sqrt(std::pow(x_error, 2) + std::pow(y_error, 2) + std::pow(z_error, 2));
 
     std::fprintf(stderr, "compare_tf[%d/%d]:\n", cnt, cnt_max);
     std::fprintf(stderr, "  error=%0.3f\n", error);
 
     cnt++;
-    if (cnt >= cnt_max)
-      finished = true;
+    if (cnt >= cnt_max) finished = true;
 
     ASSERT_FALSE(error > 0.05) << "tf output diverges from amcl_pose.";
   };
 
   auto sub_pose = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "/amcl_pose", 1, cb_pose);
+    "/amcl_pose", 1, cb_pose);
 
   rclcpp::Rate wait(1);
-  while (rclcpp::ok() && !finished)
-  {
+  while (rclcpp::ok() && !finished) {
     rclcpp::spin_some(node_);
     wait.sleep();
   }
@@ -125,7 +114,7 @@ TEST_F(CompareTfFixture, Compare)
   std::fprintf(stderr, "compare_tf finished\n");
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   rclcpp::init(argc, argv);

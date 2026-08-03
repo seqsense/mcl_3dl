@@ -27,8 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_MCL_3DL_ENGINE_H
-#define MCL_3DL_MCL_3DL_ENGINE_H
+#ifndef MCL_3DL__MCL_3DL_ENGINE_H_
+#define MCL_3DL__MCL_3DL_ENGINE_H_
 
 #include <algorithm>
 #include <cassert>
@@ -42,61 +42,56 @@
 #include <utility>
 #include <vector>
 
-#include <Eigen/Core>
-
-#include <boost/chrono.hpp>
-#include <boost/shared_ptr.hpp>
-
-#include <rclcpp/rclcpp.hpp>
-
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <sensor_msgs/msg/imu.hpp>
-#include <geometry_msgs/msg/pose_array.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <geometry_msgs/msg/transform_stamped.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
-#include <mcl_3dl_msgs/msg/status.hpp>
-#include <std_msgs/msg/header.hpp>
-
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include "Eigen/Core"
+#include "boost/chrono.hpp"
+#include "boost/shared_ptr.hpp"
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "mcl_3dl_msgs/msg/status.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "std_msgs/msg/header.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 #ifdef IS_ROS1_BUILD
-#include <tf2_ros/transform_listener.h>
+#include "tf2_ros/transform_listener.h"
 #else
-#include <tf2_ros/buffer.hpp>
+#include "tf2_ros/buffer.hpp"
 #endif
 
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_types.h>
-#include <pcl/conversions.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/io/pcd_io.h>
-
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/cloud_accum.h>
-#include <mcl_3dl/filter.h>
-#include <mcl_3dl/filter_vec3.h>
-#include <mcl_3dl/imu_measurement_model_base.h>
-#include <mcl_3dl/imu_measurement_models/imu_measurement_model_gravity.h>
-#include <mcl_3dl/lidar_measurement_model_base.h>
-#include <mcl_3dl/lidar_measurement_models/lidar_measurement_model_beam.h>
-#include <mcl_3dl/lidar_measurement_models/lidar_measurement_model_likelihood.h>
-#include <mcl_3dl/motion_prediction_model_base.h>
-#include <mcl_3dl/motion_prediction_models/motion_prediction_model_differential_drive.h>
-#include <mcl_3dl/nd.h>
-#include <mcl_3dl/noise_generators/multivariate_noise_generator.h>
-#include <mcl_3dl/parameters.h>
-#include <mcl_3dl/pf.h>
-#include <mcl_3dl/point_cloud_random_samplers/point_cloud_sampler_with_normal.h>
-#include <mcl_3dl/point_cloud_random_samplers/point_cloud_uniform_sampler.h>
-#include <mcl_3dl/point_conversion.h>
-#include <mcl_3dl/point_types.h>
-#include <mcl_3dl/quat.h>
-#include <mcl_3dl/raycast.h>
-#include <mcl_3dl/state_6dof.h>
-#include <mcl_3dl/vec3.h>
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/cloud_accum.h"
+#include "mcl_3dl/filter.h"
+#include "mcl_3dl/filter_vec3.h"
+#include "mcl_3dl/imu_measurement_model_base.h"
+#include "mcl_3dl/imu_measurement_models/imu_measurement_model_gravity.h"
+#include "mcl_3dl/lidar_measurement_model_base.h"
+#include "mcl_3dl/lidar_measurement_models/lidar_measurement_model_beam.h"
+#include "mcl_3dl/lidar_measurement_models/lidar_measurement_model_likelihood.h"
+#include "mcl_3dl/motion_prediction_model_base.h"
+#include "mcl_3dl/motion_prediction_models/motion_prediction_model_differential_drive.h"
+#include "mcl_3dl/nd.h"
+#include "mcl_3dl/noise_generators/multivariate_noise_generator.h"
+#include "mcl_3dl/parameters.h"
+#include "mcl_3dl/pf.h"
+#include "mcl_3dl/point_cloud_random_samplers/point_cloud_sampler_with_normal.h"
+#include "mcl_3dl/point_cloud_random_samplers/point_cloud_uniform_sampler.h"
+#include "mcl_3dl/point_conversion.h"
+#include "mcl_3dl/point_types.h"
+#include "mcl_3dl/quat.h"
+#include "mcl_3dl/raycast.h"
+#include "mcl_3dl/state_6dof.h"
+#include "mcl_3dl/vec3.h"
+#include "pcl/conversions.h"
+#include "pcl/filters/voxel_grid.h"
+#include "pcl/io/pcd_io.h"
+#include "pcl/kdtree/kdtree.h"
+#include "pcl/kdtree/kdtree_flann.h"
+#include "pcl/point_types.h"
+#include "pcl_conversions/pcl_conversions.h"
 
 namespace mcl_3dl
 {
@@ -128,10 +123,7 @@ struct MeasureResult
   bool has_unmatched_cloud;
 
   MeasureResult()
-    : valid(false)
-    , has_debug_markers(false)
-    , has_matched_cloud(false)
-    , has_unmatched_cloud(false)
+  : valid(false), has_debug_markers(false), has_matched_cloud(false), has_unmatched_cloud(false)
   {
   }
 };
@@ -142,10 +134,7 @@ struct MapUpdateResult
   bool valid;
   sensor_msgs::msg::PointCloud2 map_cloud;
 
-  MapUpdateResult()
-    : valid(false)
-  {
-  }
+  MapUpdateResult() : valid(false) {}
 };
 
 /// Core MCL engine, separated from ROS interface.
@@ -157,33 +146,35 @@ class MCL3dlEngine
 public:
   using PointType = mcl_3dl::PointXYZIL;
 
-  MCL3dlEngine(tf2_ros::Buffer& tfbuf, const rclcpp::Logger& logger);
+  MCL3dlEngine(tf2_ros::Buffer & tfbuf, const rclcpp::Logger & logger);
   ~MCL3dlEngine();
 
   /// Initialize the engine with loaded parameters.
   /// The Parameters object must outlive the engine.
-  bool configure(Parameters& params);
+  bool configure(Parameters & params);
 
   /// Process incoming map pointcloud
-  void processMapCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg);
+  void processMapCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg);
 
   /// Process incoming map update pointcloud
-  void processMapCloudUpdate(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg);
+  void processMapCloudUpdate(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg);
 
   /// Process incoming initial pose
-  void processPosition(const std::shared_ptr<const geometry_msgs::msg::PoseWithCovarianceStamped>& msg);
+  void processPosition(
+    const std::shared_ptr<const geometry_msgs::msg::PoseWithCovarianceStamped> & msg);
 
   /// Process incoming odometry
-  void processOdom(const std::shared_ptr<const nav_msgs::msg::Odometry>& msg);
+  void processOdom(const std::shared_ptr<const nav_msgs::msg::Odometry> & msg);
 
   /// Process incoming pointcloud
-  void processCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg);
+  void processCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg);
 
   /// Process incoming IMU data
-  void processImu(const std::shared_ptr<const sensor_msgs::msg::Imu>& msg);
+  void processImu(const std::shared_ptr<const sensor_msgs::msg::Imu> & msg);
 
   /// Process incoming landmark measurement
-  void processLandmark(const std::shared_ptr<const geometry_msgs::msg::PoseWithCovarianceStamped>& msg);
+  void processLandmark(
+    const std::shared_ptr<const geometry_msgs::msg::PoseWithCovarianceStamped> & msg);
 
   /// Handle resize particle service
   bool resizeParticle(int size);
@@ -192,10 +183,10 @@ public:
   bool expansionReset();
 
   /// Handle global localization service
-  bool globalLocalization(std::string& message);
+  bool globalLocalization(std::string & message);
 
   /// Handle load PCD service
-  bool loadPCD(const std::string& pcd_path);
+  bool loadPCD(const std::string & pcd_path);
 
   /// Timer callback for map updates. Returns data to publish.
   MapUpdateResult mapUpdateTimer();
@@ -207,85 +198,52 @@ public:
   mcl_3dl_msgs::msg::Status getStatus() const;
 
   /// Get diagnostic information
-  void diagnoseStatus(bool& has_error, bool& has_warn,
-                      std::string& message,
-                      bool& has_map, bool& has_odom, bool& has_imu) const;
+  void diagnoseStatus(
+    bool & has_error, bool & has_warn, std::string & message, bool & has_map, bool & has_odom,
+    bool & has_imu) const;
 
   /// Get the entropy from the particle filter
   float getEntropy() const;
 
   /// Access to parameters (read-only)
-  const Parameters& params() const
-  {
-    return *params_;
-  }
+  const Parameters & params() const { return *params_; }
 
   /// Check if map has been received
-  bool hasMap() const
-  {
-    return has_map_;
-  }
-  bool hasOdom() const
-  {
-    return has_odom_;
-  }
-  bool hasImu() const
-  {
-    return has_imu_;
-  }
+  bool hasMap() const { return has_map_; }
+  bool hasOdom() const { return has_odom_; }
+  bool hasImu() const { return has_imu_; }
 
   /// Set callbacks for publish operations that must happen during processing
-  using PublishParticlesCallback = std::function<void(const geometry_msgs::msg::PoseArray&)>;
-  using PublishDebugMarkerCallback = std::function<void(const visualization_msgs::msg::MarkerArray&)>;
-  using PublishMatchedCallback = std::function<void(const sensor_msgs::msg::PointCloud2&)>;
-  using PublishUnmatchedCallback = std::function<void(const sensor_msgs::msg::PointCloud2&)>;
-  using PublishPoseCallback = std::function<void(const geometry_msgs::msg::PoseWithCovarianceStamped&)>;
-  using PublishStatusCallback = std::function<void(const mcl_3dl_msgs::msg::Status&)>;
-  using PublishMapCloudCallback = std::function<void(const sensor_msgs::msg::PointCloud2&)>;
-  using BroadcastTransformCallback = std::function<void(const std::vector<geometry_msgs::msg::TransformStamped>&)>;
+  using PublishParticlesCallback = std::function<void(const geometry_msgs::msg::PoseArray &)>;
+  using PublishDebugMarkerCallback =
+    std::function<void(const visualization_msgs::msg::MarkerArray &)>;
+  using PublishMatchedCallback = std::function<void(const sensor_msgs::msg::PointCloud2 &)>;
+  using PublishUnmatchedCallback = std::function<void(const sensor_msgs::msg::PointCloud2 &)>;
+  using PublishPoseCallback =
+    std::function<void(const geometry_msgs::msg::PoseWithCovarianceStamped &)>;
+  using PublishStatusCallback = std::function<void(const mcl_3dl_msgs::msg::Status &)>;
+  using PublishMapCloudCallback = std::function<void(const sensor_msgs::msg::PointCloud2 &)>;
+  using BroadcastTransformCallback =
+    std::function<void(const std::vector<geometry_msgs::msg::TransformStamped> &)>;
   using DiagUpdateCallback = std::function<void()>;
-  using CheckSubscribersCallback = std::function<bool(const std::string& topic)>;
+  using CheckSubscribersCallback = std::function<bool(const std::string & topic)>;
 
-  void setPublishParticlesCallback(PublishParticlesCallback cb)
-  {
-    publish_particles_cb_ = cb;
-  }
+  void setPublishParticlesCallback(PublishParticlesCallback cb) { publish_particles_cb_ = cb; }
   void setPublishDebugMarkerCallback(PublishDebugMarkerCallback cb)
   {
     publish_debug_marker_cb_ = cb;
   }
-  void setPublishMatchedCallback(PublishMatchedCallback cb)
-  {
-    publish_matched_cb_ = cb;
-  }
-  void setPublishUnmatchedCallback(PublishUnmatchedCallback cb)
-  {
-    publish_unmatched_cb_ = cb;
-  }
-  void setPublishPoseCallback(PublishPoseCallback cb)
-  {
-    publish_pose_cb_ = cb;
-  }
-  void setPublishStatusCallback(PublishStatusCallback cb)
-  {
-    publish_status_cb_ = cb;
-  }
-  void setPublishMapCloudCallback(PublishMapCloudCallback cb)
-  {
-    publish_map_cloud_cb_ = cb;
-  }
+  void setPublishMatchedCallback(PublishMatchedCallback cb) { publish_matched_cb_ = cb; }
+  void setPublishUnmatchedCallback(PublishUnmatchedCallback cb) { publish_unmatched_cb_ = cb; }
+  void setPublishPoseCallback(PublishPoseCallback cb) { publish_pose_cb_ = cb; }
+  void setPublishStatusCallback(PublishStatusCallback cb) { publish_status_cb_ = cb; }
+  void setPublishMapCloudCallback(PublishMapCloudCallback cb) { publish_map_cloud_cb_ = cb; }
   void setBroadcastTransformCallback(BroadcastTransformCallback cb)
   {
     broadcast_transform_cb_ = cb;
   }
-  void setDiagUpdateCallback(DiagUpdateCallback cb)
-  {
-    diag_update_cb_ = cb;
-  }
-  void setCheckSubscribersCallback(CheckSubscribersCallback cb)
-  {
-    check_subscribers_cb_ = cb;
-  }
+  void setDiagUpdateCallback(DiagUpdateCallback cb) { diag_update_cb_ = cb; }
+  void setCheckSubscribersCallback(CheckSubscribersCallback cb) { check_subscribers_cb_ = cb; }
 
 protected:
   class MyPointRepresentation : public pcl::PointRepresentation<PointType>
@@ -299,7 +257,7 @@ protected:
       trivial_ = true;
     }
 
-    virtual void copyToFloatArray(const PointType& p, float* out) const
+    virtual void copyToFloatArray(const PointType & p, float * out) const
     {
       out[0] = p.x;
       out[1] = p.y;
@@ -308,17 +266,19 @@ protected:
   };
 
   void measure();
-  bool accumCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg);
+  bool accumCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg);
   void accumClear();
-  void loadMapCloud(const pcl::PointCloud<PointType>::Ptr& map_cloud);
+  void loadMapCloud(const pcl::PointCloud<PointType>::Ptr & map_cloud);
   void publishParticles();
 
-  tf2_ros::Buffer& tfbuf_;
+  tf2_ros::Buffer & tfbuf_;
   rclcpp::Logger logger_;
 
-  Parameters* params_;
+  Parameters * params_;
 
-  std::shared_ptr<pf::ParticleFilter<State6DOF, float, ParticleWeightedMeanQuat, std::default_random_engine>> pf_;
+  std::shared_ptr<
+    pf::ParticleFilter<State6DOF, float, ParticleWeightedMeanQuat, std::default_random_engine>>
+    pf_;
 
   std::shared_ptr<FilterVec3> f_pos_;
   std::shared_ptr<FilterVec3> f_ang_;
@@ -375,4 +335,4 @@ protected:
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_MCL_3DL_ENGINE_H
+#endif  // MCL_3DL__MCL_3DL_ENGINE_H_

@@ -27,20 +27,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <cstddef>
 #include <memory>
 #include <vector>
 
-#include <gtest/gtest.h>
-
-#include <ros/ros.h>
-
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/lidar_measurement_models/lidar_measurement_model_beam.h>
-#include <mcl_3dl/parameters.h>
-#include <mcl_3dl/point_cloud_random_sampler.h>
-#include <mcl_3dl/vec3.h>
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/lidar_measurement_models/lidar_measurement_model_beam.h"
+#include "mcl_3dl/parameters.h"
+#include "mcl_3dl/point_cloud_random_sampler.h"
+#include "mcl_3dl/vec3.h"
+#include "ros/ros.h"
 
 namespace mcl_3dl
 {
@@ -48,26 +47,20 @@ template <class POINT_TYPE>
 class DummySampler : public PointCloudRandomSampler<POINT_TYPE>
 {
 public:
-  DummySampler()
-  {
-  }
+  DummySampler() {}
 
   typename pcl::PointCloud<POINT_TYPE>::Ptr sample(
-      const typename pcl::PointCloud<POINT_TYPE>::ConstPtr& pc,
-      const size_t num) const final
+    const typename pcl::PointCloud<POINT_TYPE>::ConstPtr & pc, const size_t /* num */) const final
   {
-    typename pcl::PointCloud<POINT_TYPE>::Ptr output(
-        new pcl::PointCloud<POINT_TYPE>);
+    typename pcl::PointCloud<POINT_TYPE>::Ptr output(new pcl::PointCloud<POINT_TYPE>);
     output->header = pc->header;
 
-    if (pc->points.size() == 0)
-    {
+    if (pc->points.size() == 0) {
       return output;
     }
 
     output->points.reserve(pc->points.size());
-    for (size_t i = 0; i < pc->points.size(); i++)
-    {
+    for (size_t i = 0; i < pc->points.size(); i++) {
       output->push_back(pc->points[i]);
     }
 
@@ -79,10 +72,8 @@ public:
 TEST(BeamModel, LikelihoodFunc)
 {
   pcl::PointCloud<mcl_3dl::LidarMeasurementModelBase::PointType> raw_pc;
-  for (float y = -0.2; y <= 0.2; y += 0.1)
-  {
-    for (float z = -0.2; z <= 0.2; z += 0.1)
-    {
+  for (float y = -0.2; y <= 0.2; y += 0.1) {
+    for (float z = -0.2; z <= 0.2; z += 0.1) {
       mcl_3dl::LidarMeasurementModelBase::PointType p;
       p.x = 2;
       p.y = y;
@@ -112,17 +103,14 @@ TEST(BeamModel, LikelihoodFunc)
   }
 
   mcl_3dl::ChunkedKdtree<mcl_3dl::LidarMeasurementModelBase::PointType>::Ptr kdtree(
-      new mcl_3dl::ChunkedKdtree<mcl_3dl::LidarMeasurementModelBase::PointType>(10.0, 1.0));
+    new mcl_3dl::ChunkedKdtree<mcl_3dl::LidarMeasurementModelBase::PointType>(10.0, 1.0));
   kdtree->setInputCloud(pc_map.makeShared());
 
   // A dummy point sampler that returns all the points from the input cloud
   const mcl_3dl::DummySampler<mcl_3dl::LidarMeasurementModelBase::PointType> sampler;
-  for (int method = 0; method < 2; ++method)
-  {
-    for (int mode = 0; mode < 2; ++mode)
-    {
-      for (double hr = 0.0; hr <= 1.0; hr += 0.2)
-      {
+  for (int method = 0; method < 2; ++method) {
+    for (int mode = 0; mode < 2; ++mode) {
+      for (double hr = 0.0; hr <= 1.0; hr += 0.2) {
         auto params = std::make_shared<mcl_3dl::LidarMeasurementModelBeamParameters>();
         params->map_grid_x_ = 0.1;
         params->map_grid_y_ = 0.1;
@@ -139,8 +127,7 @@ TEST(BeamModel, LikelihoodFunc)
         mcl_3dl::LidarMeasurementModelBeam model(params);
         const auto pc = model.filter(raw_pc.makeShared(), sampler);
         ASSERT_EQ(pc->points.size(), raw_pc.points.size() - 2);
-        for (const auto& p : pc->points)
-        {
+        for (const auto & p : pc->points) {
           ASSERT_LT(p.z, 4.1);
           ASSERT_GT(p.z, -0.3);
         }
@@ -148,8 +135,7 @@ TEST(BeamModel, LikelihoodFunc)
         std::cerr << "use_raycast_using_dda: " << (method == 1) << ", ";
         std::cerr << "add_penalty_short_only_mode: " << (mode == 1) << ", ";
         std::cerr << "hit_range: " << hr << std::endl;
-        for (int i = -50; i < 50; i++)
-        {
+        for (int i = -50; i < 50; i++) {
           if (i == 0)
             std::cerr << "0";
           else if (i % 10 == 0)
@@ -158,14 +144,12 @@ TEST(BeamModel, LikelihoodFunc)
             std::cerr << " ";
         }
         std::cerr << std::endl;
-        for (int i = -50; i < 50; i++)
-        {
+        for (int i = -50; i < 50; i++) {
           const float x = 0.1 * i;
           const mcl_3dl::Vec3 pos(x, 0, 0);
           const std::vector<mcl_3dl::Vec3> origins = {pos};
-          const mcl_3dl::LidarMeasurementResult v = model.measure(
-              kdtree, pc, origins,
-              mcl_3dl::State6DOF(pos, mcl_3dl::Quat()));
+          const mcl_3dl::LidarMeasurementResult v =
+            model.measure(kdtree, pc, origins, mcl_3dl::State6DOF(pos, mcl_3dl::Quat()));
           if (v.likelihood < 1.0 / 8)
             std::cerr << "_";
           else if (v.likelihood < 2.0 / 8)
@@ -184,15 +168,13 @@ TEST(BeamModel, LikelihoodFunc)
             std::cerr << "▇";
         }
         std::cerr << std::endl;
-        for (int i = -50; i < 50; i++)
-        {
+        for (int i = -50; i < 50; i++) {
           const float x = 0.1 * i;
           const mcl_3dl::Vec3 p(x, 0, 0);
           mcl_3dl::Raycast<mcl_3dl::LidarMeasurementModelBeam::PointType>::CastResult result;
-          const mcl_3dl::LidarMeasurementModelBeam::BeamStatus s = model.getBeamStatus(
-              kdtree, mcl_3dl::Vec3(), p, result);
-          switch (s)
-          {
+          const mcl_3dl::LidarMeasurementModelBeam::BeamStatus s =
+            model.getBeamStatus(kdtree, mcl_3dl::Vec3(), p, result);
+          switch (s) {
             case mcl_3dl::LidarMeasurementModelBeam::BeamStatus::SHORT:
               std::cerr << "s";
               break;
@@ -213,7 +195,7 @@ TEST(BeamModel, LikelihoodFunc)
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_beam_likelihood");

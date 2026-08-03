@@ -27,13 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <cstdlib>
 
-#include <ros/ros.h>
-#include <std_msgs/Bool.h>
-#include <std_srvs/Empty.h>
-
-#include <gtest/gtest.h>
+#include "ros/ros.h"
+#include "std_msgs/Bool.h"
+#include "std_srvs/Empty.h"
 
 #define UNDEF_COMPATIBILITY_LEVEL
 
@@ -43,7 +43,7 @@ int current_level;
 int supported_level;
 int default_level;
 }  // namespace mcl_3dl_compat
-#include <mcl_3dl_compat/compatibility.h>
+#include "mcl_3dl_compat/compatibility.h"
 
 TEST(Mcl3DlCompat, ParamRename)
 {
@@ -83,30 +83,20 @@ TEST(Mcl3DlCompat, CompatMode)
   mcl_3dl_compat::default_level = mcl_3dl_compat::supported_level;
 
   ros::NodeHandle("~").setParam("compatible", 2);
-  ASSERT_NO_THROW(
-      {
-        mcl_3dl_compat::checkCompatMode();
-      });  // NOLINT(whitespace/braces)
+  ASSERT_NO_THROW({ mcl_3dl_compat::checkCompatMode(); });  // NOLINT(whitespace/braces)
 
   ros::NodeHandle("~").setParam("compatible", 3);
-  ASSERT_NO_THROW(
-      {
-        mcl_3dl_compat::checkCompatMode();
-      });  // NOLINT(whitespace/braces)
+  ASSERT_NO_THROW({ mcl_3dl_compat::checkCompatMode(); });  // NOLINT(whitespace/braces)
 
   ros::NodeHandle("~").setParam("compatible", 4);
   ASSERT_THROW(
-      {
-        mcl_3dl_compat::checkCompatMode();
-      },  // NOLINT(whitespace/braces)
-      std::runtime_error);
+    { mcl_3dl_compat::checkCompatMode(); },  // NOLINT(whitespace/braces)
+    std::runtime_error);
 
   ros::NodeHandle("~").setParam("compatible", 1);
   ASSERT_THROW(
-      {
-        mcl_3dl_compat::checkCompatMode();
-      },  // NOLINT(whitespace/braces)
-      std::runtime_error);
+    { mcl_3dl_compat::checkCompatMode(); },  // NOLINT(whitespace/braces)
+    std::runtime_error);
 }
 
 class Mcl3DlCompatCallbacks
@@ -118,26 +108,16 @@ public:
   mutable std_msgs::Bool::ConstPtr msg_const_;
   bool srv_called_;
 
-  void cb(const std_msgs::Bool::ConstPtr& msg)
-  {
-    msg_ = msg;
-  }
-  void cbConst(const std_msgs::Bool::ConstPtr& msg) const
-  {
-    msg_const_ = msg;
-  }
+  void cb(const std_msgs::Bool::ConstPtr & msg) { msg_ = msg; }
+  void cbConst(const std_msgs::Bool::ConstPtr & msg) const { msg_const_ = msg; }
 
-  bool cbSrv(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+  bool cbSrv(std_srvs::Empty::Request & /* req */, std_srvs::Empty::Response & /* res */)
   {
     srv_called_ = true;
     return true;
   }
 
-  Mcl3DlCompatCallbacks()
-    : pnh_("~")
-    , srv_called_(false)
-  {
-  }
+  Mcl3DlCompatCallbacks() : pnh_("~"), srv_called_(false) {}
 };
 
 TEST(Mcl3DlCompat, Subscribe)
@@ -159,10 +139,7 @@ TEST(Mcl3DlCompat, Subscribe)
   {
     cls.pnh_.setParam("compatible", 2);
     ros::Subscriber sub = mcl_3dl_compat::subscribe(
-        cls.nh_, "test_new",
-        cls.pnh_, "test_old",
-        1,
-        &Mcl3DlCompatCallbacks::cb, &cls);
+      cls.nh_, "test_new", cls.pnh_, "test_old", 1, &Mcl3DlCompatCallbacks::cb, &cls);
     ros::Duration(0.1).sleep();
     ros::spinOnce();
     ASSERT_TRUE(static_cast<bool>(cls.msg_));
@@ -173,10 +150,7 @@ TEST(Mcl3DlCompat, Subscribe)
     cls.pnh_.setParam("compatible", 3);
     cls.msg_ = nullptr;
     ros::Subscriber sub = mcl_3dl_compat::subscribe(
-        cls.nh_, "test_new",
-        cls.pnh_, "test_old",
-        1,
-        &Mcl3DlCompatCallbacks::cb, &cls);
+      cls.nh_, "test_new", cls.pnh_, "test_old", 1, &Mcl3DlCompatCallbacks::cb, &cls);
     ros::Duration(0.1).sleep();
     ros::spinOnce();
     ASSERT_TRUE(static_cast<bool>(cls.msg_));
@@ -187,10 +161,7 @@ TEST(Mcl3DlCompat, Subscribe)
     cls.pnh_.setParam("compatible", 2);
     cls.msg_ = nullptr;
     ros::Subscriber sub = mcl_3dl_compat::subscribe(
-        cls.nh_, "test_new",
-        cls.pnh_, "test_old",
-        1,
-        &Mcl3DlCompatCallbacks::cbConst, &cls);
+      cls.nh_, "test_new", cls.pnh_, "test_old", 1, &Mcl3DlCompatCallbacks::cbConst, &cls);
     ros::Duration(0.1).sleep();
     ros::spinOnce();
     ASSERT_TRUE(static_cast<bool>(cls.msg_const_));
@@ -201,10 +172,7 @@ TEST(Mcl3DlCompat, Subscribe)
     cls.pnh_.setParam("compatible", 3);
     cls.msg_ = nullptr;
     ros::Subscriber sub = mcl_3dl_compat::subscribe(
-        cls.nh_, "test_new",
-        cls.pnh_, "test_old",
-        1,
-        &Mcl3DlCompatCallbacks::cbConst, &cls);
+      cls.nh_, "test_new", cls.pnh_, "test_old", 1, &Mcl3DlCompatCallbacks::cbConst, &cls);
     ros::Duration(0.1).sleep();
     ros::spinOnce();
     ASSERT_TRUE(static_cast<bool>(cls.msg_const_));
@@ -229,9 +197,7 @@ TEST(Mcl3DlCompat, AdvertiseService)
     cls.pnh_.setParam("compatible", 2);
 
     ros::ServiceServer srv = mcl_3dl_compat::advertiseService(
-        cls.nh_, "srv_new",
-        cls.pnh_, "srv_old",
-        &Mcl3DlCompatCallbacks::cbSrv, &cls);
+      cls.nh_, "srv_new", cls.pnh_, "srv_old", &Mcl3DlCompatCallbacks::cbSrv, &cls);
     ros::Duration(0.1).sleep();
     std_srvs::Empty empty;
     ASSERT_TRUE(cli_old.call(empty.request, empty.response));
@@ -241,9 +207,7 @@ TEST(Mcl3DlCompat, AdvertiseService)
     cls.pnh_.setParam("compatible", 3);
 
     ros::ServiceServer srv = mcl_3dl_compat::advertiseService(
-        cls.nh_, "srv_new",
-        cls.pnh_, "srv_old",
-        &Mcl3DlCompatCallbacks::cbSrv, &cls);
+      cls.nh_, "srv_new", cls.pnh_, "srv_old", &Mcl3DlCompatCallbacks::cbSrv, &cls);
     ros::Duration(0.1).sleep();
     std_srvs::Empty empty;
     ASSERT_TRUE(cli_new.call(empty.request, empty.response));
@@ -252,7 +216,7 @@ TEST(Mcl3DlCompat, AdvertiseService)
   spinner.stop();
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_mcl_3dl_compat");

@@ -27,13 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <cstddef>
-#include <cmath>
-#include <vector>
-
 #include <gtest/gtest.h>
 
-#include <mcl_3dl/chunked_kdtree.h>
+#include <cmath>
+#include <cstddef>
+#include <vector>
+
+#include "mcl_3dl/chunked_kdtree.h"
 
 TEST(ChunkedKdtree, RadiusSearch)
 {
@@ -50,44 +50,32 @@ TEST(ChunkedKdtree, RadiusSearch)
   std::vector<int> id;
   std::vector<float> dist;
 
-  kdtree.radiusSearch(
-      pcl::PointXYZ(0.5, 0.5, 0.5),
-      0.3, id, dist, 1);
+  kdtree.radiusSearch(pcl::PointXYZ(0.5, 0.5, 0.5), 0.3, id, dist, 1);
   ASSERT_EQ(id.size(), 1u);
   ASSERT_EQ(id[0], 0);
 
-  kdtree.radiusSearch(
-      pcl::PointXYZ(0.5, 0.4, 0.5),
-      0.3, id, dist, 1);
+  kdtree.radiusSearch(pcl::PointXYZ(0.5, 0.4, 0.5), 0.3, id, dist, 1);
   ASSERT_EQ(id.size(), 1u);
   ASSERT_EQ(id[0], 0);
 
-  kdtree.radiusSearch(
-      pcl::PointXYZ(1.05, 0.0, 0.0),
-      0.3, id, dist, 1);
+  kdtree.radiusSearch(pcl::PointXYZ(1.05, 0.0, 0.0), 0.3, id, dist, 1);
   ASSERT_EQ(id.size(), 1u);
   ASSERT_EQ(id[0], 1);
 
-  kdtree.radiusSearch(
-      pcl::PointXYZ(1.1, 0.0, 0.0),
-      0.3, id, dist, 1);
+  kdtree.radiusSearch(pcl::PointXYZ(1.1, 0.0, 0.0), 0.3, id, dist, 1);
   ASSERT_EQ(id.size(), 1u);
   ASSERT_EQ(id[0], 2);
 
-  kdtree.radiusSearch(
-      pcl::PointXYZ(0.0, -0.05, 0.0),
-      0.3, id, dist, 1);
+  kdtree.radiusSearch(pcl::PointXYZ(0.0, -0.05, 0.0), 0.3, id, dist, 1);
   ASSERT_EQ(id.size(), 1u);
   ASSERT_EQ(id[0], 3);
 
-  kdtree.radiusSearch(
-      pcl::PointXYZ(0.0, -0.15, 0.0),
-      0.3, id, dist, 1);
+  kdtree.radiusSearch(pcl::PointXYZ(0.0, -0.15, 0.0), 0.3, id, dist, 1);
   ASSERT_EQ(id.size(), 1u);
   ASSERT_EQ(id[0], 4);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

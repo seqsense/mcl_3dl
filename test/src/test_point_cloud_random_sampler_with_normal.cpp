@@ -33,19 +33,17 @@
 #include <memory>
 #include <vector>
 
-#include <pcl/point_types.h>
-
-#include <mcl_3dl/parameters.h>
-#include <mcl_3dl/point_cloud_random_samplers/point_cloud_sampler_with_normal.h>
-#include <mcl_3dl/point_types.h>
+#include "mcl_3dl/parameters.h"
+#include "mcl_3dl/point_cloud_random_samplers/point_cloud_sampler_with_normal.h"
+#include "mcl_3dl/point_types.h"
+#include "pcl/point_types.h"
 
 namespace mcl_3dl
 {
 namespace test
 {
-std::vector<State6DOF> buildPoseCovarianceMatrix(const double yaw,
-                                                 const double front_std_dev,
-                                                 const double side_std_dev)
+std::vector<State6DOF> buildPoseCovarianceMatrix(
+  const double yaw, const double front_std_dev, const double side_std_dev)
 {
   Eigen::Matrix2d vt;
   vt(0, 0) = std::cos(yaw);
@@ -60,10 +58,8 @@ std::vector<State6DOF> buildPoseCovarianceMatrix(const double yaw,
   const Eigen::Matrix2d xv_cov = vt.transpose() * m * vt;
 
   std::vector<State6DOF> result(6);
-  for (auto& state : result)
-  {
-    for (size_t i = 0; i < 6; ++i)
-    {
+  for (auto & state : result) {
+    for (size_t i = 0; i < 6; ++i) {
       state[i] = 0.0;
     }
   }
@@ -74,13 +70,12 @@ std::vector<State6DOF> buildPoseCovarianceMatrix(const double yaw,
   return result;
 }
 
-void buildWall(pcl::PointCloud<PointXYZIL>::Ptr result_points, double rotation_angle, int wall_length)
+void buildWall(
+  pcl::PointCloud<PointXYZIL>::Ptr result_points, double rotation_angle, int wall_length)
 {
   pcl::PointCloud<PointXYZIL> points;
-  for (int ny = 0; ny < wall_length; ++ny)
-  {
-    for (int nz = 0; nz < wall_length; ++nz)
-    {
+  for (int ny = 0; ny < wall_length; ++ny) {
+    for (int nz = 0; nz < wall_length; ++nz) {
       PointXYZIL point;
       point.x = 20.0;
       point.y = (ny - wall_length / 2) * 0.05;
@@ -105,18 +100,14 @@ TEST(PointCloudSamplerWithNormal, Sampling)
   buildWall(pc, M_PI / 2, wall_length);
 
   const double robot_yaw = M_PI / 6;
-  const State6DOF mean(mcl_3dl::Vec3(3.5, -5.0, 0), mcl_3dl::Quat(mcl_3dl::Vec3(0, 0, 1), robot_yaw));
+  const State6DOF mean(
+    mcl_3dl::Vec3(3.5, -5.0, 0), mcl_3dl::Quat(mcl_3dl::Vec3(0, 0, 1), robot_yaw));
   const std::vector<State6DOF> cov_matrix = buildPoseCovarianceMatrix(robot_yaw, 1.0, 0.2);
 
   // Fix random seeds to avoid flaky results
-  const std::vector<unsigned int> seeds =
-      {
-          12345,
-          23456,
-          34567,
-          45678,
-          56789,
-      };
+  const std::vector<unsigned int> seeds = {
+    12345, 23456, 34567, 45678, 56789,
+  };
 
   struct ParameterSet
   {
@@ -126,25 +117,22 @@ TEST(PointCloudSamplerWithNormal, Sampling)
     double expected_ratio_min;
     double expected_ratio_max;
   };
-  const std::vector<ParameterSet> parameters =
-      {
-          // Weights of points in the wall at right angles: 10, weights of points in the parallel wall: 1
-          {2.0, 4.0, 10.0, 0.85, 1.0},
-          // Weights of points in the wall at right angles: 1, weights of points in the parallel wall: 1
-          {6.0, 7.0, 10.0, 0.4, 0.6},
-          // Weights of points in the wall at right angles: 3, weights of points in the parallel wall: 1
-          {2.0, 8.0, 5.0, 0.65, 0.85},
-      };
+  const std::vector<ParameterSet> parameters = {
+    // Weights of points in the wall at right angles: 10, weights of points in the parallel wall: 1
+    {2.0, 4.0, 10.0, 0.85, 1.0},
+    // Weights of points in the wall at right angles: 1, weights of points in the parallel wall: 1
+    {6.0, 7.0, 10.0, 0.4, 0.6},
+    // Weights of points in the wall at right angles: 3, weights of points in the parallel wall: 1
+    {2.0, 8.0, 5.0, 0.65, 0.85},
+  };
 
-  for (const unsigned int seed : seeds)
-  {
+  for (const unsigned int seed : seeds) {
     auto sampler_params = std::make_shared<PointCloudSamplerWithNormalParameters>();
     sampler_params->normal_search_range_ = 0.4;
     PointCloudSamplerWithNormal<PointXYZIL> sampler(sampler_params, seed);
     sampler.setParticleStatistics(mean, cov_matrix);
     const int sample_num = 100;
-    for (const ParameterSet& parameter : parameters)
-    {
+    for (const ParameterSet & parameter : parameters) {
       sampler_params->perform_weighting_ratio_ = parameter.perform_weighting_ratio;
       sampler_params->max_weight_ratio_ = parameter.max_weight_ratio;
       sampler_params->max_weight_ = parameter.max_weight;
@@ -155,11 +143,10 @@ TEST(PointCloudSamplerWithNormal, Sampling)
       // count[0] : numbers of points chosen from the wall at right angles
       // count[1] : numbers of points chosen from the parallel wall
       std::vector<int> counts(2, 0);
-      for (const auto& extracted_point : *extracted_cloud)
-      {
-        const auto pred = [&extracted_point](const PointXYZIL& p)
-        {
-          return (p.x == extracted_point.x) && (p.y == extracted_point.y) && (p.z == extracted_point.z);
+      for (const auto & extracted_point : *extracted_cloud) {
+        const auto pred = [&extracted_point](const PointXYZIL & p) {
+          return (p.x == extracted_point.x) && (p.y == extracted_point.y) &&
+                 (p.z == extracted_point.z);
         };
         const size_t index = std::find_if(pc->begin(), pc->end(), pred) - pc->begin();
         ++counts[index / std::pow(wall_length, 2)];
@@ -170,7 +157,8 @@ TEST(PointCloudSamplerWithNormal, Sampling)
     }
   }
 
-  PointCloudSamplerWithNormal<PointXYZIL> sampler(std::make_shared<PointCloudSamplerWithNormalParameters>());
+  PointCloudSamplerWithNormal<PointXYZIL> sampler(
+    std::make_shared<PointCloudSamplerWithNormalParameters>());
   sampler.setParticleStatistics(mean, cov_matrix);
   pcl::PointCloud<PointXYZIL>::Ptr invalid_cloud(new pcl::PointCloud<PointXYZIL>());
   // Empty cloud
@@ -182,7 +170,7 @@ TEST(PointCloudSamplerWithNormal, Sampling)
 }  // namespace test
 }  // namespace mcl_3dl
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

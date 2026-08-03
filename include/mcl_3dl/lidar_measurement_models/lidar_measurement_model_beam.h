@@ -27,23 +27,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_LIDAR_MEASUREMENT_MODELS_LIDAR_MEASUREMENT_MODEL_BEAM_H
-#define MCL_3DL_LIDAR_MEASUREMENT_MODELS_LIDAR_MEASUREMENT_MODEL_BEAM_H
+#ifndef MCL_3DL__LIDAR_MEASUREMENT_MODELS__LIDAR_MEASUREMENT_MODEL_BEAM_H_
+#define MCL_3DL__LIDAR_MEASUREMENT_MODELS__LIDAR_MEASUREMENT_MODEL_BEAM_H_
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
-
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/lidar_measurement_model_base.h>
-#include <mcl_3dl/parameters.h>
-#include <mcl_3dl/pf.h>
-#include <mcl_3dl/point_cloud_random_sampler.h>
-#include <mcl_3dl/raycast.h>
-#include <mcl_3dl/vec3.h>
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/lidar_measurement_model_base.h"
+#include "mcl_3dl/parameters.h"
+#include "mcl_3dl/pf.h"
+#include "mcl_3dl/point_cloud_random_sampler.h"
+#include "mcl_3dl/raycast.h"
+#include "mcl_3dl/vec3.h"
+#include "pcl/point_types.h"
+#include "pcl_conversions/pcl_conversions.h"
 
 namespace mcl_3dl
 {
@@ -69,37 +68,23 @@ public:
     TOTAL_REFLECTION
   };
   explicit LidarMeasurementModelBeam(
-      const std::shared_ptr<LidarMeasurementModelBeamParameters>& params);
+    const std::shared_ptr<LidarMeasurementModelBeamParameters> & params);
 
-  inline float getMaxSearchRange() const
-  {
-    return search_range_;
-  }
-  inline float getSinTotalRef() const
-  {
-    return sin_total_ref_;
-  }
-  inline uint32_t getFilterLabelMax() const
-  {
-    return params_->filter_label_max_;
-  }
+  inline float getMaxSearchRange() const { return search_range_; }
+  inline float getSinTotalRef() const { return sin_total_ref_; }
+  inline uint32_t getFilterLabelMax() const { return params_->filter_label_max_; }
   void refreshParameters() final;
-  void setGlobalLocalizationStatus(
-      const size_t num_particles,
-      const size_t current_num_particles);
+  void setGlobalLocalizationStatus(const size_t num_particles, const size_t current_num_particles);
   pcl::PointCloud<PointType>::Ptr filter(
-      const pcl::PointCloud<PointType>::ConstPtr& pc,
-      const PointCloudRandomSampler<PointType>& sampler) const;
+    const pcl::PointCloud<PointType>::ConstPtr & pc,
+    const PointCloudRandomSampler<PointType> & sampler) const;
   LidarMeasurementResult measure(
-      ChunkedKdtree<PointType>::Ptr& kdtree,
-      const pcl::PointCloud<PointType>::ConstPtr& pc,
-      const std::vector<Vec3>& origins,
-      const State6DOF& s) const;
+    ChunkedKdtree<PointType>::Ptr & kdtree, const pcl::PointCloud<PointType>::ConstPtr & pc,
+    const std::vector<Vec3> & origins, const State6DOF & s) const;
   BeamStatus getBeamStatus(
-      ChunkedKdtree<PointType>::Ptr& kdtree,
-      const Vec3& beam_begin, const Vec3& beam_end,
-      typename mcl_3dl::Raycast<PointType>::CastResult& result) const;
+    ChunkedKdtree<PointType>::Ptr & kdtree, const Vec3 & beam_begin, const Vec3 & beam_end,
+    typename mcl_3dl::Raycast<PointType>::CastResult & result) const;
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_LIDAR_MEASUREMENT_MODELS_LIDAR_MEASUREMENT_MODEL_BEAM_H
+#endif  // MCL_3DL__LIDAR_MEASUREMENT_MODELS__LIDAR_MEASUREMENT_MODEL_BEAM_H_

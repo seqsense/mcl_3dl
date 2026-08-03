@@ -27,8 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_CHUNKED_KDTREE_H
-#define MCL_3DL_CHUNKED_KDTREE_H
+#ifndef MCL_3DL__CHUNKED_KDTREE_H_
+#define MCL_3DL__CHUNKED_KDTREE_H_
 
 #include <cmath>
 #include <memory>
@@ -36,9 +36,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include <pcl/point_types.h>
-#include <pcl/kdtree/kdtree.h>
-#include <pcl/kdtree/kdtree_flann.h>
+#include "pcl/kdtree/kdtree.h"
+#include "pcl/kdtree/kdtree_flann.h"
+#include "pcl/point_types.h"
 
 namespace mcl_3dl
 {
@@ -57,45 +57,28 @@ public:
     const int y_;
     const int z_;
 
-    constexpr bool operator==(const ChunkId& a) const
+    constexpr bool operator==(const ChunkId & a) const
     {
       return x_ == a.x_ && y_ == a.y_ && z_ == a.z_;
     }
-    constexpr bool operator!=(const ChunkId& a) const
-    {
-      return !operator==(a);
-    }
-    constexpr ChunkId operator+(const ChunkId& a) const
+    constexpr bool operator!=(const ChunkId & a) const { return !operator==(a); }
+    constexpr ChunkId operator+(const ChunkId & a) const
     {
       return ChunkId(x_ + a.x_, y_ + a.y_, z_ + a.z_);
     }
-    size_t operator()(const ChunkId& id) const
-    {
-      return (id.x_) ^ (id.y_ << 11) ^ (id.z_ << 22);
-    }
-    ChunkId(const int x, const int y, const int z)
-      : x_(x)
-      , y_(y)
-      , z_(z)
-    {
-    }
-    ChunkId()
-      : x_(0)
-      , y_(0)
-      , z_(0)
-    {
-    }
+    size_t operator()(const ChunkId & id) const { return (id.x_) ^ (id.y_ << 11) ^ (id.z_ << 22); }
+    ChunkId(const int x, const int y, const int z) : x_(x), y_(y), z_(z) {}
+    ChunkId() : x_(0), y_(0), z_(0) {}
   };
 
   explicit ChunkedKdtree(
-      const float chunk_length = 20.0,
-      const float max_search_radius = 1.0,
-      const bool keep_clouds = false)
-    : pos_to_chunk_(1.0 / chunk_length)
-    , chunk_length_(chunk_length)
-    , max_search_radius_(max_search_radius)
-    , set_epsilon_(false)
-    , keep_clouds_(keep_clouds)
+    const float chunk_length = 20.0, const float max_search_radius = 1.0,
+    const bool keep_clouds = false)
+  : pos_to_chunk_(1.0 / chunk_length),
+    chunk_length_(chunk_length),
+    max_search_radius_(max_search_radius),
+    set_epsilon_(false),
+    keep_clouds_(keep_clouds)
   {
     chunks_.clear();
   }
@@ -103,35 +86,30 @@ public:
   {
     epsilon_ = epsilon;
     set_epsilon_ = true;
-    for (auto& chunk : chunks_)
-    {
+    for (auto & chunk : chunks_) {
       chunk.second.kdtree_->setEpsilon(epsilon_);
     }
   }
   void setPointRepresentation(
-      const typename pcl::PointRepresentation<POINT_TYPE>::ConstPtr point_rep)
+    const typename pcl::PointRepresentation<POINT_TYPE>::ConstPtr point_rep)
   {
     point_rep_ = point_rep;
-    for (auto& chunk : chunks_)
-    {
+    for (auto & chunk : chunks_) {
       chunk.second.kdtree_->setPointRepresentation(point_rep_);
     }
   }
-  const typename pcl::PointCloud<POINT_TYPE>::ConstPtr& getInputCloud() const
+  const typename pcl::PointCloud<POINT_TYPE>::ConstPtr & getInputCloud() const
   {
     return input_cloud_;
   }
-  void setInputCloud(
-      const typename pcl::PointCloud<POINT_TYPE>::ConstPtr& cloud)
+  void setInputCloud(const typename pcl::PointCloud<POINT_TYPE>::ConstPtr & cloud)
   {
     input_cloud_ = cloud;
-    if (chunks_.size())
-      chunks_.clear();
+    if (chunks_.size()) chunks_.clear();
     ChunkOriginalIds ids;
     ChunkCloud clouds;
     size_t i = 0;
-    for (auto& p : *cloud)
-    {
+    for (auto & p : *cloud) {
       const auto chunk_id = getChunkId(p);
       clouds[chunk_id].push_back(p);
       ids[chunk_id].push_back(i);
@@ -157,109 +135,93 @@ public:
       else if (in_chunk_z > chunk_length_ - max_search_radius_)
         z_bound = 1;
 
-      if (x_bound && y_bound && z_bound)
-      {
+      if (x_bound && y_bound && z_bound) {
         const ChunkId id(chunk_id + ChunkId(x_bound, y_bound, z_bound));
         clouds[id].push_back(p);
         ids[id].push_back(i);
       }
-      if (x_bound && y_bound)
-      {
+      if (x_bound && y_bound) {
         const ChunkId id(chunk_id + ChunkId(x_bound, y_bound, 0));
         clouds[id].push_back(p);
         ids[id].push_back(i);
       }
-      if (y_bound && z_bound)
-      {
+      if (y_bound && z_bound) {
         const ChunkId id(chunk_id + ChunkId(0, y_bound, z_bound));
         clouds[id].push_back(p);
         ids[id].push_back(i);
       }
-      if (z_bound && x_bound)
-      {
+      if (z_bound && x_bound) {
         const ChunkId id(chunk_id + ChunkId(x_bound, 0, z_bound));
         clouds[id].push_back(p);
         ids[id].push_back(i);
       }
-      if (x_bound)
-      {
+      if (x_bound) {
         const ChunkId id(chunk_id + ChunkId(x_bound, 0, 0));
         clouds[id].push_back(p);
         ids[id].push_back(i);
       }
-      if (y_bound)
-      {
+      if (y_bound) {
         const ChunkId id(chunk_id + ChunkId(0, y_bound, 0));
         clouds[id].push_back(p);
         ids[id].push_back(i);
       }
-      if (z_bound)
-      {
+      if (z_bound) {
         const ChunkId id(chunk_id + ChunkId(0, 0, z_bound));
         clouds[id].push_back(p);
         ids[id].push_back(i);
       }
       ++i;
     }
-    for (const auto& cloud : clouds)
-    {
-      if (point_rep_)
-        chunks_[cloud.first].kdtree_->setPointRepresentation(point_rep_);
-      if (set_epsilon_)
-        chunks_[cloud.first].kdtree_->setEpsilon(epsilon_);
+    for (const auto & cloud : clouds) {
+      if (point_rep_) chunks_[cloud.first].kdtree_->setPointRepresentation(point_rep_);
+      if (set_epsilon_) chunks_[cloud.first].kdtree_->setEpsilon(epsilon_);
       auto cloud_ptr = cloud.second.makeShared();
       chunks_[cloud.first].kdtree_->setInputCloud(cloud_ptr);
-      if (keep_clouds_)
-        chunks_[cloud.first].cloud_ = cloud_ptr;
+      if (keep_clouds_) chunks_[cloud.first].cloud_ = cloud_ptr;
       chunks_[cloud.first].original_ids_ = ids[cloud.first];
     }
   }
   int radiusSearch(
-      const POINT_TYPE& p,
-      const float radius,
-      std::vector<int>& id,
-      std::vector<float>& dist_sq,
-      const size_t num)
+    const POINT_TYPE & p, const float radius, std::vector<int> & id, std::vector<float> & dist_sq,
+    const size_t num)
   {
     if (radius > chunk_length_)
       throw std::runtime_error("ChunkedKdtree: radius must be <chunk_length");
 
     const auto chunk_id = getChunkId(p);
-    if (chunks_.find(chunk_id) == chunks_.end())
-      return false;
+    if (chunks_.find(chunk_id) == chunks_.end()) return false;
 
     const auto ret = chunks_[chunk_id].kdtree_->radiusSearch(p, radius, id, dist_sq, num);
 
-    for (auto& i : id)
-      i = chunks_[chunk_id].original_ids_[i];
+    for (auto & i : id) i = chunks_[chunk_id].original_ids_[i];
 
     return ret;
   }
-  typename pcl::KdTreeFLANN<POINT_TYPE>::Ptr getChunkKdtree(const POINT_TYPE& p)
+  typename pcl::KdTreeFLANN<POINT_TYPE>::Ptr getChunkKdtree(const POINT_TYPE & p)
   {
     return getChunkKdtree(getChunkId(p));
   }
-  typename pcl::KdTreeFLANN<POINT_TYPE>::Ptr getChunkKdtree(const ChunkId& c)
+  typename pcl::KdTreeFLANN<POINT_TYPE>::Ptr getChunkKdtree(const ChunkId & c)
   {
-    if (chunks_.find(c) == chunks_.end())
-      return typename pcl::KdTreeFLANN<POINT_TYPE>::Ptr();
+    if (chunks_.find(c) == chunks_.end()) return typename pcl::KdTreeFLANN<POINT_TYPE>::Ptr();
     return chunks_[c].kdtree_;
   }
-  typename pcl::PointCloud<POINT_TYPE>::Ptr getChunkCloud(const POINT_TYPE& p)
+  typename pcl::PointCloud<POINT_TYPE>::Ptr getChunkCloud(const POINT_TYPE & p)
   {
     return getChunkCloud(getChunkId(p));
   }
-  typename pcl::PointCloud<POINT_TYPE>::Ptr getChunkCloud(const ChunkId& c)
+  typename pcl::PointCloud<POINT_TYPE>::Ptr getChunkCloud(const ChunkId & c)
   {
     if (!keep_clouds_ || chunks_.find(c) == chunks_.end())
       return typename pcl::PointCloud<POINT_TYPE>::Ptr();
     return chunks_[c].cloud_;
   }
-  ChunkId getChunkId(const POINT_TYPE& p) const
+  ChunkId getChunkId(const POINT_TYPE & p) const
   {
-    return ChunkId(static_cast<int>(std::floor(p.x * pos_to_chunk_)),
-                   static_cast<int>(std::floor(p.y * pos_to_chunk_)),
-                   static_cast<int>(std::floor(p.z * pos_to_chunk_)));
+    return ChunkId(
+      static_cast<int>(std::floor(p.x * pos_to_chunk_)),
+      static_cast<int>(std::floor(p.y * pos_to_chunk_)),
+      static_cast<int>(std::floor(p.z * pos_to_chunk_)));
   }
 
 protected:
@@ -270,11 +232,7 @@ protected:
     std::vector<size_t> original_ids_;
     typename pcl::PointCloud<POINT_TYPE>::Ptr cloud_;
 
-    Chunk()
-      : kdtree_(new pcl::KdTreeFLANN<POINT_TYPE>)
-      , cloud_(new pcl::PointCloud<POINT_TYPE>)
-    {
-    }
+    Chunk() : kdtree_(new pcl::KdTreeFLANN<POINT_TYPE>), cloud_(new pcl::PointCloud<POINT_TYPE>) {}
   };
 
   const float pos_to_chunk_;
@@ -293,4 +251,4 @@ protected:
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_CHUNKED_KDTREE_H
+#endif  // MCL_3DL__CHUNKED_KDTREE_H_

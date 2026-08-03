@@ -27,13 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_QUAT_H
-#define MCL_3DL_QUAT_H
+#ifndef MCL_3DL__QUAT_H_
+#define MCL_3DL__QUAT_H_
 
 #include <algorithm>
 #include <cmath>
 
-#include <mcl_3dl/vec3.h>
+#include "mcl_3dl/vec3.h"
 
 namespace mcl_3dl
 {
@@ -46,17 +46,11 @@ public:
   float w_;
 
   inline constexpr Quat(const float x, const float y, const float z, const float w)
-    : x_(x)
-    , y_(y)
-    , z_(z)
-    , w_(w)
+  : x_(x), y_(y), z_(z), w_(w)
   {
   }
-  inline Quat(const Vec3& axis, const float ang)
-  {
-    setAxisAng(axis, ang);
-  }
-  inline Quat(const Vec3& forward, const Vec3& up_raw)
+  inline Quat(const Vec3 & axis, const float ang) { setAxisAng(axis, ang); }
+  inline Quat(const Vec3 & forward, const Vec3 & up_raw)
   {
     const Vec3 xv = forward.normalized();
     const Vec3 yv = up_raw.cross(xv).normalized();
@@ -66,45 +60,27 @@ public:
     x_ = std::sqrt(std::max(0.0, 1.0 + xv.x_ - yv.y_ - zv.z_)) / 2.0;
     y_ = std::sqrt(std::max(0.0, 1.0 - xv.x_ + yv.y_ - zv.z_)) / 2.0;
     z_ = std::sqrt(std::max(0.0, 1.0 - xv.x_ - yv.y_ + zv.z_)) / 2.0;
-    if (zv.y_ - yv.z_ > 0)
-      x_ = -x_;
-    if (xv.z_ - zv.x_ > 0)
-      y_ = -y_;
-    if (yv.x_ - xv.y_ > 0)
-      z_ = -z_;
+    if (zv.y_ - yv.z_ > 0) x_ = -x_;
+    if (xv.z_ - zv.x_ > 0) y_ = -y_;
+    if (yv.x_ - xv.y_ > 0) z_ = -z_;
   }
-  inline explicit Quat(const Vec3& rpy)
-  {
-    setRPY(rpy);
-  }
-  inline constexpr Quat()
-    : x_(0)
-    , y_(0)
-    , z_(0)
-    , w_(1)
-  {
-  }
-  inline constexpr float dot(const Quat& q) const
+  inline explicit Quat(const Vec3 & rpy) { setRPY(rpy); }
+  inline constexpr Quat() : x_(0), y_(0), z_(0), w_(1) {}
+  inline constexpr float dot(const Quat & q) const
   {
     return x_ * q.x_ + y_ * q.y_ + z_ * q.z_ + w_ * q.w_;
   }
-  inline float norm() const
-  {
-    return std::sqrt(dot(*this));
-  }
-  inline constexpr bool operator==(const Quat& q) const
+  inline float norm() const { return std::sqrt(dot(*this)); }
+  inline constexpr bool operator==(const Quat & q) const
   {
     return x_ == q.x_ && y_ == q.y_ && z_ == q.z_ && w_ == q.w_;
   }
-  inline constexpr bool operator!=(const Quat& q) const
-  {
-    return !operator==(q);
-  }
-  inline Quat operator+(const Quat& q) const
+  inline constexpr bool operator!=(const Quat & q) const { return !operator==(q); }
+  inline Quat operator+(const Quat & q) const
   {
     return Quat(x_ + q.x_, y_ + q.y_, z_ + q.z_, w_ + q.w_);
   }
-  inline Quat operator+=(const Quat& q)
+  inline Quat operator+=(const Quat & q)
   {
     x_ += q.x_;
     y_ += q.y_;
@@ -112,11 +88,11 @@ public:
     w_ += q.w_;
     return *this;
   }
-  inline Quat operator-(const Quat& q) const
+  inline Quat operator-(const Quat & q) const
   {
     return Quat(x_ - q.x_, y_ - q.y_, z_ - q.z_, w_ - q.w_);
   }
-  inline Quat operator-=(const Quat& q)
+  inline Quat operator-=(const Quat & q)
   {
     x_ -= q.x_;
     y_ -= q.y_;
@@ -124,19 +100,14 @@ public:
     w_ -= q.w_;
     return *this;
   }
-  inline constexpr Quat operator-() const
-  {
-    return Quat(-x_, -y_, -z_, -w_);
-  }
-  inline constexpr Quat operator*(const Quat& q) const
+  inline constexpr Quat operator-() const { return Quat(-x_, -y_, -z_, -w_); }
+  inline constexpr Quat operator*(const Quat & q) const
   {
     return Quat(
-        w_ * q.x_ + x_ * q.w_ + y_ * q.z_ - z_ * q.y_,
-        w_ * q.y_ + y_ * q.w_ + z_ * q.x_ - x_ * q.z_,
-        w_ * q.z_ + z_ * q.w_ + x_ * q.y_ - y_ * q.x_,
-        w_ * q.w_ - x_ * q.x_ - y_ * q.y_ - z_ * q.z_);
+      w_ * q.x_ + x_ * q.w_ + y_ * q.z_ - z_ * q.y_, w_ * q.y_ + y_ * q.w_ + z_ * q.x_ - x_ * q.z_,
+      w_ * q.z_ + z_ * q.w_ + x_ * q.y_ - y_ * q.x_, w_ * q.w_ - x_ * q.x_ - y_ * q.y_ - z_ * q.z_);
   }
-  inline Vec3 operator*(const Vec3& v) const
+  inline Vec3 operator*(const Vec3 & v) const
   {
     const Quat ret = *this * Quat(v.x_, v.y_, v.z_, 0.0) * conj();
     return Vec3(ret.x_, ret.y_, ret.z_);
@@ -145,10 +116,7 @@ public:
   {
     return Quat(x_ * s, y_ * s, z_ * s, w_ * s);
   }
-  inline constexpr Quat operator/(const float s) const
-  {
-    return operator*(1.0 / s);
-  }
+  inline constexpr Quat operator/(const float s) const { return operator*(1.0 / s); }
   inline Quat operator*=(const float s)
   {
     x_ *= s;
@@ -172,22 +140,10 @@ public:
     getAxisAng(axis, ang);
     return Quat(axis, ang * s);
   }
-  inline Quat normalized() const
-  {
-    return (*this) / norm();
-  }
-  inline void normalize()
-  {
-    *this = normalized();
-  }
-  inline constexpr Quat conj() const
-  {
-    return Quat(-x_, -y_, -z_, w_);
-  }
-  inline constexpr Quat inv() const
-  {
-    return conj() / dot(*this);
-  }
+  inline Quat normalized() const { return (*this) / norm(); }
+  inline void normalize() { *this = normalized(); }
+  inline constexpr Quat conj() const { return Quat(-x_, -y_, -z_, w_); }
+  inline constexpr Quat inv() const { return conj() / dot(*this); }
   inline constexpr Vec3 getRPY() const
   {
     const float ysq = y_ * y_;
@@ -199,7 +155,7 @@ public:
 
     return Vec3(std::atan2(t3, t4), std::asin(t2), std::atan2(t1, t0));
   }
-  inline void setRPY(const Vec3& rpy)
+  inline void setRPY(const Vec3 & rpy)
   {
     const float t2 = std::cos(rpy.x_ / 2);
     const float t3 = std::sin(rpy.x_ / 2);
@@ -213,7 +169,7 @@ public:
     z_ = t1 * t2 * t4 - t0 * t3 * t5;
     w_ = t0 * t2 * t4 + t1 * t3 * t5;
   }
-  inline void setAxisAng(const Vec3& axis, const float ang)
+  inline void setAxisAng(const Vec3 & axis, const float ang)
   {
     const Vec3 a = axis / axis.norm();
     const float s = std::sin(ang / 2);
@@ -223,21 +179,19 @@ public:
     w_ = std::cos(ang / 2);
     normalize();
   }
-  inline void getAxisAng(Vec3& axis, float& ang) const
+  inline void getAxisAng(Vec3 & axis, float & ang) const
   {
-    if (fabs(w_) >= 1.0 - 0.000001)
-    {
+    if (fabs(w_) >= 1.0 - 0.000001) {
       ang = 0.0;
       axis = Vec3(0.0, 0.0, 1.0);
       return;
     }
     ang = std::acos(w_) * 2.0;
-    if (ang > M_PI)
-      ang -= 2.0 * M_PI;
+    if (ang > M_PI) ang -= 2.0 * M_PI;
     const float wsq = 1.0 - w_ * w_;
     axis = Vec3(x_, y_, z_) / std::sqrt(wsq);
   }
-  inline void rotateAxis(const Quat& r)
+  inline void rotateAxis(const Quat & r)
   {
     Vec3 axis;
     float ang;
@@ -247,4 +201,4 @@ public:
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_QUAT_H
+#endif  // MCL_3DL__QUAT_H_

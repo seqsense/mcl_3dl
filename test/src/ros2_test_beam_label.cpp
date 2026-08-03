@@ -27,60 +27,49 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <random>
 #include <vector>
 
-#include <Eigen/Core>
-
-#include <rclcpp/rclcpp.hpp>
-
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <sensor_msgs/msg/imu.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-
-#include <gtest/gtest.h>
+#include "Eigen/Core"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "tf2/utils.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 namespace
 {
 void generateSamplePointcloud2(
-    sensor_msgs::msg::PointCloud2& cloud,
-    const float offset_x,
-    const float offset_y,
-    const float offset_z,
-    const float range)
+  sensor_msgs::msg::PointCloud2 & cloud, const float offset_x, const float offset_y,
+  const float offset_z, const float range)
 {
   cloud.height = 1;
   cloud.is_bigendian = false;
   cloud.is_dense = false;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-      4,
-      "x", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "y", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "z", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "label", 1, sensor_msgs::msg::PointField::UINT32);
+    4, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "z", 1, sensor_msgs::msg::PointField::FLOAT32, "label", 1,
+    sensor_msgs::msg::PointField::UINT32);
 
   const float resolution = 0.05;
 
   std::vector<Eigen::Vector4d> points;
   // Floor
-  for (float x = -range; x < range; x += resolution)
-  {
-    for (float y = -range; y < range; y += resolution)
-    {
+  for (float x = -range; x < range; x += resolution) {
+    for (float y = -range; y < range; y += resolution) {
       points.emplace_back(x, y, -1.0, 0);
     }
   }
   // Semi-transparent wall
-  for (float x = -0.5; x < 0.5; x += resolution)
-  {
-    for (float z = -1.0; z < 0.0; z += resolution)
-    {
+  for (float x = -0.5; x < 0.5; x += resolution) {
+    for (float z = -1.0; z < 0.0; z += resolution) {
       points.emplace_back(x, 1.0, z, 2);
     }
   }
@@ -92,8 +81,7 @@ void generateSamplePointcloud2(
   sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
   sensor_msgs::PointCloud2Iterator<uint32_t> iter_label(cloud, "label");
 
-  for (const Eigen::Vector4d& p : points)
-  {
+  for (const Eigen::Vector4d & p : points) {
     *iter_x = p[0] + offset_x;
     *iter_y = p[1] + offset_y;
     *iter_z = p[2] + offset_z;
@@ -106,7 +94,7 @@ void generateSamplePointcloud2(
 }
 
 sensor_msgs::msg::PointCloud2 generateMapMsg(
-    const float offset_x, const float offset_y, const float offset_z)
+  const float offset_x, const float offset_y, const float offset_z)
 {
   sensor_msgs::msg::PointCloud2 cloud;
   generateSamplePointcloud2(cloud, offset_x, offset_y, offset_z, 5.0);
@@ -173,32 +161,29 @@ protected:
     node_ = rclcpp::Node::make_shared("test_beam_label");
 
     sub_pose_cov_ = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-        "amcl_pose", 1,
-        [this](const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg)
-        { pose_cov_ = msg; });
+      "amcl_pose", 1,
+      [this](const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr & msg) {
+        pose_cov_ = msg;
+      });
 
     pub_mapcloud_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>(
-        "mapcloud", rclcpp::QoS(1).transient_local());
+      "mapcloud", rclcpp::QoS(1).transient_local());
     pub_cloud_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("cloud", 1);
     pub_imu_ = node_->create_publisher<sensor_msgs::msg::Imu>("imu/data", 1);
     pub_odom_ = node_->create_publisher<nav_msgs::msg::Odometry>("odom", 1);
     pub_init_ = node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-        "initialpose", rclcpp::QoS(1).transient_local());
+      "initialpose", rclcpp::QoS(1).transient_local());
 
     // Wait for DDS discovery
     rclcpp::sleep_for(std::chrono::seconds(2));
     pub_init_->publish(generateInitialPose(node_));
     rclcpp::WallRate wait(10);
-    for (int i = 0; i < 100; i++)
-    {
+    for (int i = 0; i < 100; i++) {
       wait.sleep();
       rclcpp::spin_some(node_);
-      if (pose_cov_)
-        break;
-      if (i % 10 == 0)
-        pub_init_->publish(generateInitialPose(node_));
-      if (!rclcpp::ok())
-        break;
+      if (pose_cov_) break;
+      if (i % 10 == 0) pub_init_->publish(generateInitialPose(node_));
+      if (!rclcpp::ok()) break;
     }
   }
 };
@@ -213,12 +198,10 @@ TEST_F(BeamLabel, SemiTransparentWall)
 
   rclcpp::sleep_for(std::chrono::seconds(2));
   rclcpp::WallRate rate(10);
-  for (int i = 0; i < 100; ++i)
-  {
+  for (int i = 0; i < 100; ++i) {
     rate.sleep();
     rclcpp::spin_some(node_);
-    if (i % 10 == 0)
-      pub_mapcloud_->publish(map_msg);
+    if (i % 10 == 0) pub_mapcloud_->publish(map_msg);
     pub_cloud_->publish(generateCloudMsg(node_));
     pub_imu_->publish(generateImuMsg(node_));
     pub_odom_->publish(generateOdomMsg(node_));
@@ -238,7 +221,7 @@ TEST_F(BeamLabel, SemiTransparentWall)
   ASSERT_NEAR(pose_cov_->pose.pose.position.z, offset_z, 0.2);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   rclcpp::init(argc, argv);

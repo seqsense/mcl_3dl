@@ -27,18 +27,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <array>
-#include <cstddef>
-#include <cmath>
-
 #include <gtest/gtest.h>
 
-#include <mcl_3dl/state_6dof.h>
+#include <array>
+#include <cmath>
+#include <cstddef>
+
+#include "mcl_3dl/state_6dof.h"
 
 TEST(State6DOF, Constructors)
 {
   const mcl_3dl::State6DOF a(
-      mcl_3dl::Vec3(1.0, 2.0, 3.0), mcl_3dl::Quat(0.001, 0.002, 0.003, 0.99));
+    mcl_3dl::Vec3(1.0, 2.0, 3.0), mcl_3dl::Quat(0.001, 0.002, 0.003, 0.99));
 
   ASSERT_FALSE(a.isDiff());
   ASSERT_EQ(a.pos_, mcl_3dl::Vec3(1.0, 2.0, 3.0));
@@ -47,8 +47,7 @@ TEST(State6DOF, Constructors)
   ASSERT_EQ(a.odom_err_integ_lin_, mcl_3dl::Vec3(0.0, 0.0, 0.0));
   ASSERT_EQ(a.odom_err_integ_ang_, mcl_3dl::Vec3(0.0, 0.0, 0.0));
 
-  const mcl_3dl::State6DOF b(
-      mcl_3dl::Vec3(4.0, 5.0, 6.0), mcl_3dl::Vec3(0.1, 0.2, 0.3));
+  const mcl_3dl::State6DOF b(mcl_3dl::Vec3(4.0, 5.0, 6.0), mcl_3dl::Vec3(0.1, 0.2, 0.3));
 
   ASSERT_TRUE(b.isDiff());
   ASSERT_EQ(b.pos_, mcl_3dl::Vec3(4.0, 5.0, 6.0));
@@ -61,7 +60,7 @@ TEST(State6DOF, Constructors)
 TEST(State6DOF, Accessors)
 {
   const mcl_3dl::State6DOF a(
-      mcl_3dl::Vec3(1.0, 2.0, 3.0), mcl_3dl::Quat(0.001, 0.002, 0.003, 0.99));
+    mcl_3dl::Vec3(1.0, 2.0, 3.0), mcl_3dl::Quat(0.001, 0.002, 0.003, 0.99));
 
   ASSERT_EQ(a[0], 1.0f);
   ASSERT_EQ(a[1], 2.0f);
@@ -78,22 +77,19 @@ TEST(State6DOF, Accessors)
   ASSERT_EQ(a[12], 0.0f);
 
   mcl_3dl::State6DOF b;
-  for (size_t i = 0; i < b.size(); ++i)
-    b[i] = 0.1 * (i + 1);
-  for (size_t i = 0; i < b.size(); ++i)
-    ASSERT_FLOAT_EQ(b[i], 0.1 * (i + 1));
+  for (size_t i = 0; i < b.size(); ++i) b[i] = 0.1 * (i + 1);
+  for (size_t i = 0; i < b.size(); ++i) ASSERT_FLOAT_EQ(b[i], 0.1 * (i + 1));
 
   const mcl_3dl::State6DOF c = b;
-  for (size_t i = 0; i < b.size(); ++i)
-    ASSERT_FLOAT_EQ(c[i], 0.1 * (i + 1));
+  for (size_t i = 0; i < b.size(); ++i) ASSERT_FLOAT_EQ(c[i], 0.1 * (i + 1));
 }
 
 TEST(State6DOF, Adder)
 {
   const mcl_3dl::State6DOF a(
-      mcl_3dl::Vec3(1.0, 2.0, 3.0), mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), 0.1));
+    mcl_3dl::Vec3(1.0, 2.0, 3.0), mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), 0.1));
   const mcl_3dl::State6DOF b(
-      mcl_3dl::Vec3(4.0, 5.0, 6.0), mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), 0.2));
+    mcl_3dl::Vec3(4.0, 5.0, 6.0), mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), 0.2));
 
   const mcl_3dl::State6DOF sum = a + b;
   const mcl_3dl::State6DOF sub = a - b;
@@ -115,7 +111,7 @@ TEST(State6DOF, Adder)
 TEST(State6DOF, CovarianceMatrix)
 {
   const mcl_3dl::State6DOF e(
-      mcl_3dl::Vec3(1.0, 2.0, 3.0), mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), 0.1));
+    mcl_3dl::Vec3(1.0, 2.0, 3.0), mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), 0.1));
 
   ASSERT_EQ(e.covDimension(), 6);
   std::array<float, 36> cov{};
@@ -126,37 +122,30 @@ TEST(State6DOF, CovarianceMatrix)
   std::normal_distribution<float> z_dis(e.pos_.z_, 0.3);
   std::normal_distribution<float> yaw_dis(e.rot_.getRPY().z_, 0.4);
 
-  const auto generate_state = [&mt, &x_dis, &y_dis, &z_dis, &yaw_dis](const bool use_rpy) -> mcl_3dl::State6DOF
-  {
-    if (use_rpy)
-    {
-      return mcl_3dl::State6DOF(mcl_3dl::Vec3(x_dis(mt), y_dis(mt), z_dis(mt)),
-                                mcl_3dl::Vec3(0, 0, yaw_dis(mt)));
-    }
-    else
-    {
-      return mcl_3dl::State6DOF(mcl_3dl::Vec3(x_dis(mt), y_dis(mt), z_dis(mt)),
-                                mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), yaw_dis(mt)));
+  const auto generate_state = [&mt, &x_dis, &y_dis, &z_dis,
+                               &yaw_dis](const bool use_rpy) -> mcl_3dl::State6DOF {
+    if (use_rpy) {
+      return mcl_3dl::State6DOF(
+        mcl_3dl::Vec3(x_dis(mt), y_dis(mt), z_dis(mt)), mcl_3dl::Vec3(0, 0, yaw_dis(mt)));
+    } else {
+      return mcl_3dl::State6DOF(
+        mcl_3dl::Vec3(x_dis(mt), y_dis(mt), z_dis(mt)),
+        mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), yaw_dis(mt)));
     }
   };
 
   const std::size_t N = 500;
-  for (std::size_t n = 0; n < N; n++)
-  {
+  for (std::size_t n = 0; n < N; n++) {
     mcl_3dl::State6DOF s = generate_state(n % 2 == 0);
-    for (std::size_t j = 0; j < 6; j++)
-    {
-      for (std::size_t k = j; k < 6; k++)
-      {
+    for (std::size_t j = 0; j < 6; j++) {
+      for (std::size_t k = j; k < 6; k++) {
         cov[k * 6 + j] = cov[j * 6 + k] += s.covElement(e, j, k);
       }
     }
   }
 
-  for (size_t j = 0; j < 6; j++)
-  {
-    for (size_t k = 0; k < 6; k++)
-    {
+  for (size_t j = 0; j < 6; j++) {
+    for (size_t k = 0; k < 6; k++) {
       cov[k * 6 + j] /= (N - 1);
     }
   }
@@ -168,7 +157,7 @@ TEST(State6DOF, CovarianceMatrix)
   ASSERT_NEAR(std::sqrt(cov[35]), 0.4, tolerance);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

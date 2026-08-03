@@ -101,12 +101,8 @@ if($ENV{ROS_VERSION} EQUAL 1)
     find_package(rostest REQUIRED)
     find_package(rosunit REQUIRED)
     add_subdirectory(test)
-
-    if(NOT "$ENV{ROS_DISTRO}" STREQUAL "melodic")
-      find_package(roslint REQUIRED)
-      roslint_cpp()
-      roslint_add_test()
-    endif()
+    # roslint is intentionally not used: style checking for this hybrid package
+    # is unified on the ROS 2 side via ament_lint_auto (see the ROS 2 block).
   endif()
 
 
@@ -160,6 +156,32 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     mcl_3dl_node PLUGIN "mcl_3dl::MCL3dlNode" EXECUTABLE mcl_3dl_exec)
 
   if(BUILD_TESTING)
+    find_package(ament_lint_auto REQUIRED)
+    # ROS 1 only sources are not built by this ROS 2 package; keep them out of
+    # the linters (absolute paths, as required by AMENT_LINT_AUTO_FILE_EXCLUDE).
+    set(AMENT_LINT_AUTO_FILE_EXCLUDE
+      ${CMAKE_CURRENT_SOURCE_DIR}/include/mcl_3dl_compat/compatibility.h
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/ros1_mcl_3dl.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/compare_pose.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/compare_tf.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/performance_raycast.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_beam_label.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_beam_likelihood.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_debug_output.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_expansion_resetting.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_global_localization.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_landmark.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_mcl_3dl_compat.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_parameters.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/src/test_transform_failure.cpp)
+    # CPP_FORMATTER=clang_format: exclude uncrustify, keep clang_format + cpplint.
+    list(APPEND AMENT_LINT_AUTO_EXCLUDE ament_cmake_uncrustify)
+    # The upstream BSD-3-Clause headers here carry an extra "All rights
+    # reserved." line, so ament_copyright reports license=<unknown> for every
+    # file. The linter is excluded rather than rewriting the license text.
+    list(APPEND AMENT_LINT_AUTO_EXCLUDE ament_cmake_copyright)
+    ament_lint_auto_find_test_dependencies()
+
     find_package(ament_cmake_gtest REQUIRED)
 
     set(UNIT_TEST_COMPILE_OPTIONS -g -O0)
@@ -365,7 +387,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
       # them via ament_index. Override at run time with MCL_3DL_TEST_DATA_DIR
       # if you want to point at an out-of-tree copy.
       if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/data/short_test3"
-         AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/data/short_test_ref.topic")
+          AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/data/short_test_ref.topic")
         install(DIRECTORY test/data/short_test3
                 DESTINATION share/${PROJECT_NAME}/test_data)
         install(FILES test/data/short_test_ref.topic

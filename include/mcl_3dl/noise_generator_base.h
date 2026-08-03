@@ -27,8 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_NOISE_GENERATOR_BASE_H
-#define MCL_3DL_NOISE_GENERATOR_BASE_H
+#ifndef MCL_3DL__NOISE_GENERATOR_BASE_H_
+#define MCL_3DL__NOISE_GENERATOR_BASE_H_
 
 #include <vector>
 
@@ -38,27 +38,18 @@ template <typename FLT_TYPE>
 class NoiseGeneratorBase
 {
 public:
-  virtual ~NoiseGeneratorBase()
-  {
-  }
+  virtual ~NoiseGeneratorBase() {}
 
   template <typename T>
-  void setMean(const T& mean)
+  void setMean(const T & mean)
   {
     mean_.resize(mean.size());
-    for (size_t i = 0; i < mean.size(); ++i)
-    {
+    for (size_t i = 0; i < mean.size(); ++i) {
       mean_[i] = mean[i];
     }
   }
-  const std::vector<FLT_TYPE>& getMean() const
-  {
-    return mean_;
-  }
-  size_t getDimension() const
-  {
-    return mean_.size();
-  }
+  const std::vector<FLT_TYPE> & getMean() const { return mean_; }
+  size_t getDimension() const { return mean_.size(); }
 
 protected:
   std::vector<FLT_TYPE> mean_;
@@ -66,4 +57,4 @@ protected:
 
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_NOISE_GENERATOR_BASE_H
+#endif  // MCL_3DL__NOISE_GENERATOR_BASE_H_

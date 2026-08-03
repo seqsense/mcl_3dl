@@ -27,27 +27,26 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "mcl_3dl/lidar_measurement_models/lidar_measurement_model_likelihood.h"
+
 #include <algorithm>
 #include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
-
-#include <mcl_3dl/pf.h>
-#include <mcl_3dl/point_cloud_random_sampler.h>
-#include <mcl_3dl/point_types.h>
-#include <mcl_3dl/vec3.h>
-
-#include <mcl_3dl/lidar_measurement_models/lidar_measurement_model_likelihood.h>
+#include "mcl_3dl/pf.h"
+#include "mcl_3dl/point_cloud_random_sampler.h"
+#include "mcl_3dl/point_types.h"
+#include "mcl_3dl/vec3.h"
+#include "pcl/point_types.h"
+#include "pcl_conversions/pcl_conversions.h"
 
 namespace mcl_3dl
 {
 
 LidarMeasurementModelLikelihood::LidarMeasurementModelLikelihood(
-    const std::shared_ptr<LidarMeasurementModelLikelihoodParameters>& params)
+  const std::shared_ptr<LidarMeasurementModelLikelihoodParameters> & params)
 {
   params_ = params ? params : std::make_shared<LidarMeasurementModelLikelihoodParameters>();
   refreshParameters();
@@ -61,41 +60,35 @@ void LidarMeasurementModelLikelihood::refreshParameters()
 }
 
 void LidarMeasurementModelLikelihood::setGlobalLocalizationStatus(
-    const size_t num_particles,
-    const size_t current_num_particles)
+  const size_t num_particles, const size_t current_num_particles)
 {
-  if (current_num_particles <= num_particles)
-  {
+  if (current_num_particles <= num_particles) {
     num_points_ = params_->num_points_default_;
     return;
   }
   size_t num = params_->num_points_default_ * num_particles / current_num_particles;
-  if (num < params_->num_points_global_)
-    num = params_->num_points_global_;
+  if (num < params_->num_points_global_) num = params_->num_points_global_;
 
   num_points_ = num;
 }
 
 typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::Ptr
 LidarMeasurementModelLikelihood::filter(
-    const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr& pc,
-    const PointCloudRandomSampler<PointType>& sampler) const
+  const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr & pc,
+  const PointCloudRandomSampler<PointType> & sampler) const
 {
-  const auto local_points_filter = [this](const LidarMeasurementModelBase::PointType& p)
-  {
-    if (p.x * p.x + p.y * p.y > clip_far_sq_)
-      return true;
-    if (p.x * p.x + p.y * p.y < clip_near_sq_)
-      return true;
-    if (p.z < params_->clip_z_min_ || params_->clip_z_max_ < p.z)
-      return true;
+  const auto local_points_filter = [this](const LidarMeasurementModelBase::PointType & p) {
+    if (p.x * p.x + p.y * p.y > clip_far_sq_) return true;
+    if (p.x * p.x + p.y * p.y < clip_near_sq_) return true;
+    if (p.z < params_->clip_z_min_ || params_->clip_z_max_ < p.z) return true;
     return false;
   };
   pcl::PointCloud<LidarMeasurementModelBase::PointType>::Ptr pc_filtered(
-      new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
+    new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
   *pc_filtered = *pc;
   pc_filtered->erase(
-      std::remove_if(pc_filtered->begin(), pc_filtered->end(), local_points_filter), pc_filtered->end());
+    std::remove_if(pc_filtered->begin(), pc_filtered->end(), local_points_filter),
+    pc_filtered->end());
   pc_filtered->width = 1;
   pc_filtered->height = pc_filtered->points.size();
 
@@ -103,17 +96,14 @@ LidarMeasurementModelLikelihood::filter(
 }
 
 LidarMeasurementResult LidarMeasurementModelLikelihood::measure(
-    typename ChunkedKdtree<LidarMeasurementModelBase::PointType>::Ptr& kdtree,
-    const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr& pc,
-    const std::vector<Vec3>& /*origins*/,
-    const State6DOF& s) const
+  typename ChunkedKdtree<LidarMeasurementModelBase::PointType>::Ptr & kdtree,
+  const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr & pc,
+  const std::vector<Vec3> & /*origins*/, const State6DOF & s) const
 {
-  if (!pc)
-    return LidarMeasurementResult(1, 0);
-  if (pc->size() == 0)
-    return LidarMeasurementResult(1, 0);
+  if (!pc) return LidarMeasurementResult(1, 0);
+  if (pc->size() == 0) return LidarMeasurementResult(1, 0);
   pcl::PointCloud<LidarMeasurementModelBase::PointType>::Ptr pc_particle(
-      new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
+    new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
   std::vector<int> id(1);
   std::vector<float> sqdist(1);
 
@@ -121,13 +111,11 @@ LidarMeasurementResult LidarMeasurementModelLikelihood::measure(
   *pc_particle = *pc;
   s.transform(*pc_particle);
   size_t num = 0;
-  for (auto& p : pc_particle->points)
-  {
-    if (kdtree->radiusSearch(p, params_->match_dist_min_, id, sqdist, 1))
-    {
-      const float dist = params_->match_dist_min_ - std::max(std::sqrt(sqdist[0]), params_->match_dist_flat_);
-      if (dist < 0.0)
-        continue;
+  for (auto & p : pc_particle->points) {
+    if (kdtree->radiusSearch(p, params_->match_dist_min_, id, sqdist, 1)) {
+      const float dist =
+        params_->match_dist_min_ - std::max(std::sqrt(sqdist[0]), params_->match_dist_flat_);
+      if (dist < 0.0) continue;
 
       score_like += dist * params_->match_weight_;
       num++;

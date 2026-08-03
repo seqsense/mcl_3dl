@@ -27,21 +27,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <limits>
 #include <utility>
 #include <vector>
 
-#include <ros/ros.h>
-
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-
-#include <gtest/gtest.h>
+#include "geometry_msgs/PoseArray.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "ros/ros.h"
 
 namespace
 {
 inline geometry_msgs::PoseWithCovarianceStamped generatePoseWithCov(
-    const float y, const float y_var, const float var_measure = 0.0)
+  const float y, const float y_var, const float var_measure = 0.0)
 {
   geometry_msgs::PoseWithCovarianceStamped pose;
   pose.header.frame_id = "map";
@@ -56,18 +55,16 @@ inline geometry_msgs::PoseWithCovarianceStamped generatePoseWithCov(
   pose.pose.covariance[6 * 5 + 5] = var_measure;
   return pose;
 }
-std::pair<float, float> getMean(const std::vector<geometry_msgs::Pose>& poses)
+std::pair<float, float> getMean(const std::vector<geometry_msgs::Pose> & poses)
 {
   float mean = 0;
-  for (const geometry_msgs::Pose p : poses)
-  {
+  for (const geometry_msgs::Pose p : poses) {
     mean += p.position.y;
   }
   mean /= poses.size();
 
   float root_mean = 0;
-  for (const geometry_msgs::Pose p : poses)
-  {
+  for (const geometry_msgs::Pose p : poses) {
     root_mean += std::pow(p.position.y - mean, 2);
   }
   root_mean /= poses.size();
@@ -80,37 +77,31 @@ TEST(Landmark, Measurement)
 {
   geometry_msgs::PoseArray::ConstPtr poses;
 
-  const boost::function<void(const geometry_msgs::PoseArray::ConstPtr&)> cb_pose =
-      [&poses](const geometry_msgs::PoseArray::ConstPtr& msg) -> void
-  {
-    poses = msg;
-  };
+  const boost::function<void(const geometry_msgs::PoseArray::ConstPtr &)> cb_pose =
+    [&poses](const geometry_msgs::PoseArray::ConstPtr & msg) -> void { poses = msg; };
 
   ros::NodeHandle nh("");
   ros::Subscriber sub_pose = nh.subscribe("mcl_3dl/particles", 1, cb_pose);
   ros::Publisher pub_init =
-      nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1, true);
+    nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1, true);
   ros::Publisher pub_landmark =
-      nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("mcl_measurement", 1, true);
+    nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("mcl_measurement", 1, true);
 
   ros::Duration(1.0).sleep();
   pub_init.publish(generatePoseWithCov(2.0, 1.0));
 
   ros::Rate wait(10);
-  for (int i = 0; i < 100; i++)
-  {
+  for (int i = 0; i < 100; i++) {
     wait.sleep();
     ros::spinOnce();
-    if (poses)
-      break;
+    if (poses) break;
     ASSERT_TRUE(ros::ok());
   }
   ros::Duration(0.1).sleep();
   ros::spinOnce();
 
   ASSERT_TRUE(static_cast<bool>(poses));
-  for (const geometry_msgs::Pose p : poses->poses)
-  {
+  for (const geometry_msgs::Pose p : poses->poses) {
     ASSERT_FLOAT_EQ(p.position.x, 0.0f);
     ASSERT_FLOAT_EQ(p.position.z, 0.0f);
     ASSERT_FLOAT_EQ(p.orientation.x, 0.0f);
@@ -128,8 +119,7 @@ TEST(Landmark, Measurement)
   ros::spinOnce();
 
   ASSERT_TRUE(static_cast<bool>(poses));
-  for (const geometry_msgs::Pose p : poses->poses)
-  {
+  for (const geometry_msgs::Pose p : poses->poses) {
     ASSERT_FLOAT_EQ(p.position.x, 0.0f);
     ASSERT_FLOAT_EQ(p.position.z, 0.0f);
     ASSERT_FLOAT_EQ(p.orientation.x, 0.0f);
@@ -142,7 +132,7 @@ TEST(Landmark, Measurement)
   ASSERT_NEAR(mean_measured.second, 0.5f, 0.1f);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_landmark");

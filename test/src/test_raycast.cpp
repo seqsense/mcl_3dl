@@ -27,41 +27,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <cstddef>
 #include <vector>
 
-#include <gtest/gtest.h>
-
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/raycasts/raycast_using_dda.h>
-#include <mcl_3dl/raycasts/raycast_using_kdtree.h>
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/raycasts/raycast_using_dda.h"
+#include "mcl_3dl/raycasts/raycast_using_kdtree.h"
 
 TEST(Raycast, Collision)
 {
   pcl::PointCloud<pcl::PointXYZ> pc;
-  for (float y = -1.0; y < 1.0; y += 0.1)
-  {
-    for (float z = -1.0; z < 1.0; z += 0.1)
-    {
+  for (float y = -1.0; y < 1.0; y += 0.1) {
+    for (float z = -1.0; z < 1.0; z += 0.1) {
       pc.push_back(pcl::PointXYZ(0.5, y, z));
     }
   }
-  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(10.0, 1.0));
+  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(
+    new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(10.0, 1.0));
   kdtree->setInputCloud(pc.makeShared());
   const float hit_range = 0.1 * std::sqrt(3.f);
   mcl_3dl::RaycastUsingKDTree<pcl::PointXYZ> raycaster(0.1, 0.1, 0.1, hit_range);
-  for (float y = -0.8; y < 0.8; y += 0.11)
-  {
-    for (float z = -0.8; z < 0.8; z += 0.13)
-    {
+  for (float y = -0.8; y < 0.8; y += 0.11) {
+    for (float z = -0.8; z < 0.8; z += 0.13) {
       bool collision = false;
       raycaster.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(1.0, y * 2.0, z * 2.0));
       mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
-      while (raycaster.getNextCastResult(point))
-      {
-        if (point.collision_)
-        {
+      while (raycaster.getNextCastResult(point)) {
+        if (point.collision_) {
           collision = true;
           EXPECT_NEAR((point.pos_ - mcl_3dl::Vec3(0.5, y, z)).norm(), 0.0, 0.2);
           break;
@@ -70,17 +65,13 @@ TEST(Raycast, Collision)
       ASSERT_TRUE(collision);
     }
   }
-  for (float y = -1.0; y < 1.0; y += 0.11)
-  {
-    for (float z = -1.0; z < 1.0; z += 0.13)
-    {
+  for (float y = -1.0; y < 1.0; y += 0.11) {
+    for (float z = -1.0; z < 1.0; z += 0.13) {
       raycaster.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(0.5 - hit_range, y, z));
       mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
       bool collision = false;
-      while (raycaster.getNextCastResult(point))
-      {
-        if (point.collision_)
-          collision = true;
+      while (raycaster.getNextCastResult(point)) {
+        if (point.collision_) collision = true;
       }
       ASSERT_FALSE(collision);
     }
@@ -89,10 +80,8 @@ TEST(Raycast, Collision)
     raycaster.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(0.5, 3.0, 0.0));
     mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
     bool collision = false;
-    while (raycaster.getNextCastResult(point))
-    {
-      if (point.collision_)
-        collision = true;
+    while (raycaster.getNextCastResult(point)) {
+      if (point.collision_) collision = true;
     }
     ASSERT_FALSE(collision);
   }
@@ -101,15 +90,14 @@ TEST(Raycast, Collision)
 TEST(Raycast, CollisionTolerance)
 {
   pcl::PointCloud<pcl::PointXYZ> pc;
-  for (float y = -1.0; y < 1.0; y += 0.05)
-  {
-    for (float z = -1.0; z < 1.0; z += 0.1)
-    {
+  for (float y = -1.0; y < 1.0; y += 0.05) {
+    for (float z = -1.0; z < 1.0; z += 0.1) {
       pc.push_back(pcl::PointXYZ(0.5, y, z));
     }
   }
 
-  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(10.0, 1.0));
+  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(
+    new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(10.0, 1.0));
   kdtree->setInputCloud(pc.makeShared());
 
   {
@@ -117,10 +105,8 @@ TEST(Raycast, CollisionTolerance)
     raycaster.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(0.5, 0.0, 0.0));
     mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
     bool collision = false;
-    while (raycaster.getNextCastResult(point))
-    {
-      if (point.collision_)
-      {
+    while (raycaster.getNextCastResult(point)) {
+      if (point.collision_) {
         collision = true;
         break;
       }
@@ -131,13 +117,12 @@ TEST(Raycast, CollisionTolerance)
     const float hit_range = 0.15 * std::sqrt(3.f);
     const float epsilon = 0.01;
     mcl_3dl::RaycastUsingKDTree<pcl::PointXYZ> raycaster(0.1, 0.15, 0.15, hit_range);
-    raycaster.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(0.5 - hit_range - epsilon, 0.0, 0.0));
+    raycaster.setRay(
+      kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(0.5 - hit_range - epsilon, 0.0, 0.0));
     mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
     bool collision = false;
-    while (raycaster.getNextCastResult(point))
-    {
-      if (point.collision_)
-      {
+    while (raycaster.getNextCastResult(point)) {
+      if (point.collision_) {
         collision = true;
         break;
       }
@@ -149,14 +134,13 @@ TEST(Raycast, CollisionTolerance)
 TEST(Raycast, SinAng)
 {
   pcl::PointCloud<pcl::PointXYZ> pc;
-  for (float y = -1.0; y < 1.0; y += 0.1)
-  {
-    for (float z = -1.0; z < 1.0; z += 0.1)
-    {
+  for (float y = -1.0; y < 1.0; y += 0.1) {
+    for (float z = -1.0; z < 1.0; z += 0.1) {
       pc.push_back(pcl::PointXYZ(0.5, y, z));
     }
   }
-  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(10.0, 1.0));
+  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(
+    new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(10.0, 1.0));
   kdtree->setInputCloud(pc.makeShared());
   mcl_3dl::RaycastUsingKDTree<pcl::PointXYZ> raycaster(0.1, 0.1, 0.1, 0.1 * std::sqrt(3.f));
 
@@ -164,10 +148,8 @@ TEST(Raycast, SinAng)
     bool collision = false;
     raycaster.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(1.0, 0.0, 0.0));
     mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
-    while (raycaster.getNextCastResult(point))
-    {
-      if (point.collision_)
-      {
+    while (raycaster.getNextCastResult(point)) {
+      if (point.collision_) {
         EXPECT_NEAR(point.sin_angle_, 1.0, 0.1);
         collision = true;
         break;
@@ -179,10 +161,8 @@ TEST(Raycast, SinAng)
     bool collision = false;
     raycaster.setRay(kdtree, mcl_3dl::Vec3(0.0, 5.0, 0.0), mcl_3dl::Vec3(1.0, -5.0, 0.0));
     mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
-    while (raycaster.getNextCastResult(point))
-    {
-      if (point.collision_)
-      {
+    while (raycaster.getNextCastResult(point)) {
+      if (point.collision_) {
         EXPECT_NEAR(point.sin_angle_, sinf(0.5 / 5.0), 0.05);
         collision = true;
         break;
@@ -194,10 +174,8 @@ TEST(Raycast, SinAng)
     bool collision = false;
     raycaster.setRay(kdtree, mcl_3dl::Vec3(0.0, 3.0, 0.0), mcl_3dl::Vec3(1.0, -3.0, 0.0));
     mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
-    while (raycaster.getNextCastResult(point))
-    {
-      if (point.collision_)
-      {
+    while (raycaster.getNextCastResult(point)) {
+      if (point.collision_) {
         EXPECT_NEAR(point.sin_angle_, sinf(0.5 / 3.0), 0.05);
         collision = true;
         break;
@@ -207,7 +185,7 @@ TEST(Raycast, SinAng)
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

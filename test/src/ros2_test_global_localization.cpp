@@ -27,33 +27,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <limits>
 #include <random>
 #include <vector>
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <geometry_msgs/msg/pose_array.hpp>
-#include <mcl_3dl_msgs/msg/status.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <sensor_msgs/msg/imu.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <std_srvs/srv/trigger.hpp>
-#include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-
-#include <gtest/gtest.h>
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "mcl_3dl_msgs/msg/status.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "std_srvs/srv/trigger.hpp"
+#include "tf2/utils.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 namespace
 {
 void generateSamplePointcloud2(
-    sensor_msgs::msg::PointCloud2& cloud,
-    const float x0, const float y0,
-    const float x1, const float y1,
-    const float offset_x, const float offset_y,
-    const float offset_z, const float offset_yaw)
+  sensor_msgs::msg::PointCloud2 & cloud, const float x0, const float y0, const float x1,
+  const float y1, const float offset_x, const float offset_y, const float offset_z,
+  const float offset_yaw)
 {
   std::random_device seed;
   std::default_random_engine engine(seed());
@@ -64,18 +61,15 @@ void generateSamplePointcloud2(
   cloud.is_dense = false;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-      4,
-      "x", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "y", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "z", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "intensity", 1, sensor_msgs::msg::PointField::FLOAT32);
+    4, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "z", 1, sensor_msgs::msg::PointField::FLOAT32, "intensity", 1,
+    sensor_msgs::msg::PointField::FLOAT32);
 
   class Point
   {
   public:
     float x_, y_, z_;
-    Point(const float x, const float y, const float z)
-      : x_(x), y_(y), z_(z) {}
+    Point(const float x, const float y, const float z) : x_(x), y_(y), z_(z) {}
   };
   std::vector<Point> points;
   const float grid_xy = 0.15;
@@ -83,20 +77,22 @@ void generateSamplePointcloud2(
   const float floor_size = 6.0;
   for (float x = -floor_size; x < floor_size; x += grid_xy)
     for (float y = -floor_size; y < floor_size; y += grid_xy)
-      if (x0 < x && x < x1 && y0 < y && y < y1)
-        points.push_back(Point(x, y, 0.0));
-  for (float x = -2; x < 1.6; x += grid_xy)
-    if (x0 < x && x < x1)
-      for (float z = 0.5; z < 1.5; z += grid_z)
-        points.push_back(Point(x, 1.6, z));
-  for (float y = -0.5; y < 1.6; y += grid_xy)
-    if (y0 < y && y < y1)
-      for (float z = 0.5; z < 2.0; z += grid_z)
-        points.push_back(Point(1.6, y, z));
-  for (float x = 0; x < 1.6; x += grid_xy)
-    if (x0 < x && x < x1)
-      for (float z = 0.5; z < 2.0; z += grid_z)
-        points.push_back(Point(x, -2.1 + x, z));
+      if (x0 < x && x < x1 && y0 < y && y < y1) points.push_back(Point(x, y, 0.0));
+  for (float x = -2; x < 1.6; x += grid_xy) {
+    if (x0 < x && x < x1) {
+      for (float z = 0.5; z < 1.5; z += grid_z) points.push_back(Point(x, 1.6, z));
+    }
+  }
+  for (float y = -0.5; y < 1.6; y += grid_xy) {
+    if (y0 < y && y < y1) {
+      for (float z = 0.5; z < 2.0; z += grid_z) points.push_back(Point(1.6, y, z));
+    }
+  }
+  for (float x = 0; x < 1.6; x += grid_xy) {
+    if (x0 < x && x < x1) {
+      for (float z = 0.5; z < 2.0; z += grid_z) points.push_back(Point(x, -2.1 + x, z));
+    }
+  }
 
   const float o_cos = cosf(offset_yaw);
   const float o_sin = sinf(offset_yaw);
@@ -106,8 +102,7 @@ void generateSamplePointcloud2(
   sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
 
-  for (const Point& p : points)
-  {
+  for (const Point & p : points) {
     *iter_x = p.x_ * o_cos - p.y_ * o_sin + offset_x + rand(engine);
     *iter_y = p.x_ * o_sin + p.y_ * o_cos + offset_y + rand(engine);
     *iter_z = p.z_ + offset_z + rand(engine);
@@ -125,14 +120,11 @@ sensor_msgs::msg::PointCloud2 generateMapMsg()
   return cloud;
 }
 sensor_msgs::msg::PointCloud2 generateCloudMsg(
-    rclcpp::Node::SharedPtr node,
-    const float offset_x, const float offset_y,
-    const float offset_z, const float offset_yaw)
+  rclcpp::Node::SharedPtr node, const float offset_x, const float offset_y, const float offset_z,
+  const float offset_yaw)
 {
   sensor_msgs::msg::PointCloud2 cloud;
-  generateSamplePointcloud2(
-      cloud, -2, -2, 2, 2,
-      offset_x, offset_y, offset_z, offset_yaw);
+  generateSamplePointcloud2(cloud, -2, -2, 2, 2, offset_x, offset_y, offset_z, offset_yaw);
   cloud.header.frame_id = "laser";
   cloud.header.stamp = node->now();
   return cloud;
@@ -162,9 +154,7 @@ class GlobalLocalization : public ::testing::TestWithParam<float>
 {
 };
 
-INSTANTIATE_TEST_CASE_P(
-    OdometryOffset, GlobalLocalization,
-    ::testing::Values(5.0, 100.0));
+INSTANTIATE_TEST_CASE_P(OdometryOffset, GlobalLocalization, ::testing::Values(5.0, 100.0));
 
 TEST_P(GlobalLocalization, Localize)
 {
@@ -174,17 +164,17 @@ TEST_P(GlobalLocalization, Localize)
   mcl_3dl_msgs::msg::Status::ConstSharedPtr status;
 
   auto sub_pose = node->create_subscription<geometry_msgs::msg::PoseArray>(
-      "mcl_3dl/particles", 1,
-      [&poses](const geometry_msgs::msg::PoseArray::ConstSharedPtr& msg) { poses = msg; });
+    "mcl_3dl/particles", 1,
+    [&poses](const geometry_msgs::msg::PoseArray::ConstSharedPtr & msg) { poses = msg; });
   auto sub_status = node->create_subscription<mcl_3dl_msgs::msg::Status>(
-      "mcl_3dl/status", 1,
-      [&status](const mcl_3dl_msgs::msg::Status::ConstSharedPtr& msg) { status = msg; });
+    "mcl_3dl/status", 1,
+    [&status](const mcl_3dl_msgs::msg::Status::ConstSharedPtr & msg) { status = msg; });
 
   auto src_global_localization =
-      node->create_client<std_srvs::srv::Trigger>("mcl_3dl/global_localization");
+    node->create_client<std_srvs::srv::Trigger>("mcl_3dl/global_localization");
 
   auto pub_mapcloud = node->create_publisher<sensor_msgs::msg::PointCloud2>(
-      "mapcloud", rclcpp::QoS(1).transient_local());
+    "mapcloud", rclcpp::QoS(1).transient_local());
   auto pub_cloud = node->create_publisher<sensor_msgs::msg::PointCloud2>("cloud", 1);
   auto pub_imu = node->create_publisher<sensor_msgs::msg::Imu>("imu/data", 1);
   auto pub_odom = node->create_publisher<nav_msgs::msg::Odometry>("odom", 1);
@@ -193,41 +183,33 @@ TEST_P(GlobalLocalization, Localize)
   pub_mapcloud->publish(map_msg);
   rclcpp::sleep_for(std::chrono::seconds(2));
   rclcpp::WallRate wait(10);
-  for (int i = 0; i < 100; i++)
-  {
+  for (int i = 0; i < 100; i++) {
     wait.sleep();
     rclcpp::spin_some(node);
-    if (poses)
-      break;
-    if (i % 10 == 0)
-      pub_mapcloud->publish(map_msg);
+    if (poses) break;
+    if (i % 10 == 0) pub_mapcloud->publish(map_msg);
     ASSERT_TRUE(rclcpp::ok());
   }
 
-  for (float offset_x = -0.5; offset_x <= 0.51; offset_x += 1.0)
-  {
-    for (float offset_yaw = -M_PI / 2; offset_yaw <= M_PI / 2 + 0.1; offset_yaw += M_PI)
-    {
+  for (float offset_x = -0.5; offset_x <= 0.51; offset_x += 1.0) {
+    for (float offset_yaw = -M_PI / 2; offset_yaw <= M_PI / 2 + 0.1; offset_yaw += M_PI) {
       const float laser_frame_height = 0.5;
       const float offset_y = 0.54;
       const float offset_z = 0.0;
 
       rclcpp::WallRate rate(10);
       // Wait until mcl_3dl initialization
-      while (rclcpp::ok())
-      {
+      while (rclcpp::ok()) {
         rate.sleep();
         rclcpp::spin_some(node);
-        if (status && status->status == mcl_3dl_msgs::msg::Status::NORMAL)
-          break;
+        if (status && status->status == mcl_3dl_msgs::msg::Status::NORMAL) break;
         pub_cloud->publish(
-            generateCloudMsg(node, offset_x, offset_y, offset_z - laser_frame_height, offset_yaw));
+          generateCloudMsg(node, offset_x, offset_y, offset_z - laser_frame_height, offset_yaw));
         pub_imu->publish(generateImuMsg(node));
         pub_odom->publish(generateOdomMsg(node, 0.0));
       }
       ASSERT_TRUE(rclcpp::ok());
-      for (int i = 0; i < 5; ++i)
-      {
+      for (int i = 0; i < 5; ++i) {
         pub_odom->publish(generateOdomMsg(node, GetParam()));
         rclcpp::sleep_for(std::chrono::milliseconds(100));
         rclcpp::spin_some(node);
@@ -240,40 +222,35 @@ TEST_P(GlobalLocalization, Localize)
       rclcpp::spin_some(node);
 
       // Wait until starting global localization
-      while (rclcpp::ok())
-      {
+      while (rclcpp::ok()) {
         rate.sleep();
         rclcpp::spin_some(node);
-        if (status && status->status == mcl_3dl_msgs::msg::Status::GLOBAL_LOCALIZATION)
-          break;
+        if (status && status->status == mcl_3dl_msgs::msg::Status::GLOBAL_LOCALIZATION) break;
         pub_cloud->publish(
-            generateCloudMsg(node, offset_x, offset_y, offset_z - laser_frame_height, offset_yaw));
+          generateCloudMsg(node, offset_x, offset_y, offset_z - laser_frame_height, offset_yaw));
         pub_imu->publish(generateImuMsg(node));
         pub_odom->publish(generateOdomMsg(node, GetParam()));
       }
       ASSERT_TRUE(rclcpp::ok());
 
       // Wait until finishing global localization
-      while (rclcpp::ok())
-      {
+      while (rclcpp::ok()) {
         rate.sleep();
         rclcpp::spin_some(node);
-        if (status && status->status == mcl_3dl_msgs::msg::Status::NORMAL)
-          break;
+        if (status && status->status == mcl_3dl_msgs::msg::Status::NORMAL) break;
         pub_cloud->publish(
-            generateCloudMsg(node, offset_x, offset_y, offset_z - laser_frame_height, offset_yaw));
+          generateCloudMsg(node, offset_x, offset_y, offset_z - laser_frame_height, offset_yaw));
         pub_imu->publish(generateImuMsg(node));
         pub_odom->publish(generateOdomMsg(node, GetParam()));
       }
       ASSERT_TRUE(rclcpp::ok());
 
       // Wait to improve accuracy
-      for (int i = 0; i < 40; ++i)
-      {
+      for (int i = 0; i < 40; ++i) {
         rate.sleep();
         rclcpp::spin_some(node);
         pub_cloud->publish(
-            generateCloudMsg(node, offset_x, offset_y, offset_z - laser_frame_height, offset_yaw));
+          generateCloudMsg(node, offset_x, offset_y, offset_z - laser_frame_height, offset_yaw));
         pub_imu->publish(generateImuMsg(node));
         pub_odom->publish(generateOdomMsg(node, GetParam()));
       }
@@ -283,39 +260,34 @@ TEST_P(GlobalLocalization, Localize)
       ASSERT_TRUE(static_cast<bool>(poses));
 
       const tf2::Transform true_pose(
-          tf2::Quaternion(0, 0, sinf(-offset_yaw / 2), cosf(-offset_yaw / 2)),
-          tf2::Vector3(
-              -(offset_x * cos(-offset_yaw) - offset_y * sin(-offset_yaw)),
-              -(offset_x * sin(-offset_yaw) + offset_y * cos(-offset_yaw)),
-              -offset_z));
+        tf2::Quaternion(0, 0, sinf(-offset_yaw / 2), cosf(-offset_yaw / 2)),
+        tf2::Vector3(
+          -(offset_x * cos(-offset_yaw) - offset_y * sin(-offset_yaw)),
+          -(offset_x * sin(-offset_yaw) + offset_y * cos(-offset_yaw)), -offset_z));
       bool found_true_positive(false);
       float dist_err_min = std::numeric_limits<float>::max();
       float ang_err_min = std::numeric_limits<float>::max();
-      for (const auto& pose : poses->poses)
-      {
+      for (const auto & pose : poses->poses) {
         tf2::Transform particle_pose;
         tf2::fromMsg(pose, particle_pose);
 
         const tf2::Transform tf_diff = particle_pose.inverse() * true_pose;
         const float dist_err = tf_diff.getOrigin().length();
         const float ang_err = fabs(tf2::getYaw(tf_diff.getRotation()));
-        if (dist_err < 2e-1 && ang_err < 2e-1)
-          found_true_positive = true;
+        if (dist_err < 2e-1 && ang_err < 2e-1) found_true_positive = true;
 
-        if (dist_err_min > dist_err)
-        {
+        if (dist_err_min > dist_err) {
           dist_err_min = dist_err;
           ang_err_min = ang_err;
         }
       }
-      ASSERT_TRUE(found_true_positive)
-          << "Minimum position error: " << dist_err_min << std::endl
-          << "Angular error: " << ang_err_min << std::endl;
+      ASSERT_TRUE(found_true_positive) << "Minimum position error: " << dist_err_min << std::endl
+                                       << "Angular error: " << ang_err_min << std::endl;
     }
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   rclcpp::init(argc, argv);

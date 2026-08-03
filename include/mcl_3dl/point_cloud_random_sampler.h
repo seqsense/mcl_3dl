@@ -27,15 +27,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_POINT_CLOUD_RANDOM_SAMPLER_H
-#define MCL_3DL_POINT_CLOUD_RANDOM_SAMPLER_H
+#ifndef MCL_3DL__POINT_CLOUD_RANDOM_SAMPLER_H_
+#define MCL_3DL__POINT_CLOUD_RANDOM_SAMPLER_H_
 
 #include <vector>
 
-#include <pcl/point_cloud.h>
-
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/state_6dof.h>
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/state_6dof.h"
+#include "pcl/point_cloud.h"
 
 namespace mcl_3dl
 {
@@ -44,16 +43,14 @@ class PointCloudRandomSampler
 {
 public:
   virtual typename pcl::PointCloud<POINT_TYPE>::Ptr sample(
-      const typename pcl::PointCloud<POINT_TYPE>::ConstPtr& pc, const size_t num) const = 0;
+    const typename pcl::PointCloud<POINT_TYPE>::ConstPtr & pc, const size_t num) const = 0;
   virtual void setParticleStatistics(
-      const State6DOF& /*mean*/, const std::vector<State6DOF>& /*covariances*/)
+    const State6DOF & /*mean*/, const std::vector<State6DOF> & /*covariances*/)
   {
   }
-  virtual void refreshParameters()
-  {
-  }
+  virtual void refreshParameters() {}
 };
 
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_POINT_CLOUD_RANDOM_SAMPLER_H
+#endif  // MCL_3DL__POINT_CLOUD_RANDOM_SAMPLER_H_

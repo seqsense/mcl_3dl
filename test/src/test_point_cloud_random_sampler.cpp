@@ -27,12 +27,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-
-#include <mcl_3dl/point_cloud_random_samplers/point_cloud_uniform_sampler.h>
-
 #include <gtest/gtest.h>
+
+#include "mcl_3dl/point_cloud_random_samplers/point_cloud_uniform_sampler.h"
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
 
 TEST(PointCloudUniformSampler, Sampling)
 {
@@ -42,21 +41,18 @@ TEST(PointCloudUniformSampler, Sampling)
   pc_input->header.frame_id = "frame0";
   pc_input->header.stamp = 12345;
 
-  const float points_ref[][3] =
-      {
-          {10, 11, 12},
-          {20, 21, 22},
-          {30, 31, 32},
-      };
-  for (const auto& p_ref : points_ref)
-  {
+  const float points_ref[][3] = {
+    {10, 11, 12},
+    {20, 21, 22},
+    {30, 31, 32},
+  };
+  for (const auto & p_ref : points_ref) {
     pc_input->push_back(pcl::PointXYZ(p_ref[0], p_ref[1], p_ref[2]));
   }
 
   mcl_3dl::PointCloudUniformSampler<pcl::PointXYZ> sampler;
 
-  for (size_t num = 1; num < 4; num++)
-  {
+  for (size_t num = 1; num < 4; num++) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr pc_output = sampler.sample(pc_input, num);
 
     // Check header and number of the points
@@ -66,13 +62,10 @@ TEST(PointCloudUniformSampler, Sampling)
     ASSERT_EQ(pc_output->width, num);
 
     // Check that the all sampled points are in the original point array
-    for (const pcl::PointXYZ& p : *pc_output)
-    {
+    for (const pcl::PointXYZ & p : *pc_output) {
       bool found = false;
-      for (const auto& p_ref : points_ref)
-      {
-        if (p_ref[0] == p.x && p_ref[1] == p.y && p_ref[2] == p.z)
-        {
+      for (const auto & p_ref : points_ref) {
+        if (p_ref[0] == p.x && p_ref[1] == p.y && p_ref[2] == p.z) {
           found = true;
           break;
         }
@@ -86,7 +79,7 @@ TEST(PointCloudUniformSampler, Sampling)
   ASSERT_EQ(pc_output0->points.size(), 0u);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

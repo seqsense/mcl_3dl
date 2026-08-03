@@ -27,23 +27,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_MOTION_PREDICTION_MODELS_MOTION_PREDICTION_MODEL_DIFFERENTIAL_DRIVE_H
-#define MCL_3DL_MOTION_PREDICTION_MODELS_MOTION_PREDICTION_MODEL_DIFFERENTIAL_DRIVE_H
+#ifndef MCL_3DL__MOTION_PREDICTION_MODELS__MOTION_PREDICTION_MODEL_DIFFERENTIAL_DRIVE_H_
+#define MCL_3DL__MOTION_PREDICTION_MODELS__MOTION_PREDICTION_MODEL_DIFFERENTIAL_DRIVE_H_
 
-#include <mcl_3dl/motion_prediction_model_base.h>
+#include "mcl_3dl/motion_prediction_model_base.h"
 
 namespace mcl_3dl
 {
 class MotionPredictionModelDifferentialDrive : public MotionPredictionModelBase
 {
 public:
-  MotionPredictionModelDifferentialDrive(const float odom_err_integ_lin_tc, const float odom_err_integ_ang_tc)
-    : odom_err_integ_lin_tc_(odom_err_integ_lin_tc)
-    , odom_err_integ_ang_tc_(odom_err_integ_ang_tc)
+  MotionPredictionModelDifferentialDrive(
+    const float odom_err_integ_lin_tc, const float odom_err_integ_ang_tc)
+  : odom_err_integ_lin_tc_(odom_err_integ_lin_tc), odom_err_integ_ang_tc_(odom_err_integ_ang_tc)
   {
   }
 
-  inline void setOdoms(const State6DOF& odom_prev, const State6DOF& odom_current, const float time_diff) final
+  inline void setOdoms(
+    const State6DOF & odom_prev, const State6DOF & odom_current, const float time_diff) final
   {
     relative_translation_ = odom_prev.rot_.inv() * (odom_current.pos_ - odom_prev.pos_);
     relative_quat_ = odom_prev.rot_.inv() * odom_current.rot_;
@@ -53,9 +54,10 @@ public:
     time_diff_ = time_diff;
   };
 
-  inline void predict(State6DOF& s) const final
+  inline void predict(State6DOF & s) const final
   {
-    const Vec3 diff = relative_translation_ * (1.0 + s.noise_ll_) + Vec3(s.noise_al_ * relative_angle_, 0.0, 0.0);
+    const Vec3 diff =
+      relative_translation_ * (1.0 + s.noise_ll_) + Vec3(s.noise_al_ * relative_angle_, 0.0, 0.0);
     s.odom_err_integ_lin_ += (diff - relative_translation_);
     s.pos_ += s.rot_ * diff;
     const float yaw_diff = s.noise_la_ * relative_translation_norm_ + s.noise_aa_ * relative_angle_;
@@ -77,4 +79,4 @@ private:
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_MOTION_PREDICTION_MODELS_MOTION_PREDICTION_MODEL_DIFFERENTIAL_DRIVE_H
+#endif  // MCL_3DL__MOTION_PREDICTION_MODELS__MOTION_PREDICTION_MODEL_DIFFERENTIAL_DRIVE_H_

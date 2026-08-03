@@ -31,46 +31,41 @@
 #include <cstddef>
 #include <vector>
 
-#include <boost/chrono.hpp>
-
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/raycasts/raycast_using_dda.h>
-#include <mcl_3dl/raycasts/raycast_using_kdtree.h>
+#include "boost/chrono.hpp"
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/raycasts/raycast_using_dda.h"
+#include "mcl_3dl/raycasts/raycast_using_kdtree.h"
 
 void performanceTestRaycast(const float chunk_size)
 {
   std::cerr << "## Chunk size: " << chunk_size << std::endl;
   const auto ts = boost::chrono::high_resolution_clock::now();
   pcl::PointCloud<pcl::PointXYZ> pc;
-  for (float y = -50.0; y < 50.0; y += 0.1)
-  {
-    for (float z = -50.0; z < 50.0; z += 0.1)
-    {
+  for (float y = -50.0; y < 50.0; y += 0.1) {
+    for (float z = -50.0; z < 50.0; z += 0.1) {
       pc.push_back(pcl::PointXYZ(5.0, y, z));
       pc.push_back(pcl::PointXYZ(y + 10.0, 1.5, z));
     }
   }
-  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(chunk_size, 0.1));
+  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(
+    new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(chunk_size, 0.1));
   kdtree->setInputCloud(pc.makeShared());
   const auto tnow = boost::chrono::high_resolution_clock::now();
-  std::cerr << "- Generate kdtree: " << boost::chrono::duration<float>(tnow - ts).count() << " sec" << std::endl;
+  std::cerr << "- Generate kdtree: " << boost::chrono::duration<float>(tnow - ts).count() << " sec"
+            << std::endl;
 
   const auto ts2 = boost::chrono::high_resolution_clock::now();
   size_t collision_cnt = 0;
   size_t cnt = 0;
   mcl_3dl::RaycastUsingKDTree<pcl::PointXYZ> ray(0.1, 0.1, 0.1, 0.1 * std::sqrt(3.f));
   const auto ts3 = boost::chrono::high_resolution_clock::now();
-  for (float y = -50.0; y < 50.0; y += 1.2)
-  {
-    for (float z = -50.0; z < 50.0; z += 1.1)
-    {
+  for (float y = -50.0; y < 50.0; y += 1.2) {
+    for (float z = -50.0; z < 50.0; z += 1.1) {
       cnt++;
       ray.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(1.0, y * 2.0, z * 2.0));
       mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
-      while (ray.getNextCastResult(point))
-      {
-        if (point.collision_)
-        {
+      while (ray.getNextCastResult(point)) {
+        if (point.collision_) {
           collision_cnt++;
           break;
         }
@@ -79,10 +74,10 @@ void performanceTestRaycast(const float chunk_size)
   }
   std::cerr << "- Collisions: " << collision_cnt << "/" << cnt << std::endl;
   const auto tnow2 = boost::chrono::high_resolution_clock::now();
-  std::cerr << "- mcl_3dl::RaycastUsingKDTree Init: " << boost::chrono::duration<float>(ts3 - ts2).count() << " sec"
-            << std::endl;
-  std::cerr << "- mcl_3dl::RaycastUsingKDTree: " << boost::chrono::duration<float>(tnow2 - ts3).count() << " sec"
-            << std::endl;
+  std::cerr << "- mcl_3dl::RaycastUsingKDTree Init: "
+            << boost::chrono::duration<float>(ts3 - ts2).count() << " sec" << std::endl;
+  std::cerr << "- mcl_3dl::RaycastUsingKDTree: "
+            << boost::chrono::duration<float>(tnow2 - ts3).count() << " sec" << std::endl;
   std::cerr << std::endl;
 }
 
@@ -91,10 +86,8 @@ void performanceTestRaycastUsingDDA(const float dda_grid_size)
   std::cerr << "## DDA grid size: " << dda_grid_size << std::endl;
   const auto ts = boost::chrono::high_resolution_clock::now();
   pcl::PointCloud<pcl::PointXYZ> pc;
-  for (float y = -50.0; y < 50.0; y += 0.1)
-  {
-    for (float z = -50.0; z < 50.0; z += 0.1)
-    {
+  for (float y = -50.0; y < 50.0; y += 0.1) {
+    for (float z = -50.0; z < 50.0; z += 0.1) {
       pc.push_back(pcl::PointXYZ(5.0, y, z));
       pc.push_back(pcl::PointXYZ(y + 10.0, 1.5, z));
     }
@@ -103,29 +96,28 @@ void performanceTestRaycastUsingDDA(const float dda_grid_size)
   pc.push_back(pcl::PointXYZ(-1.05, -50.05, -50.05));
   pc.push_back(pcl::PointXYZ(2.05, 50.05, 50.05));
 
-  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(10.0, 0.1));
+  mcl_3dl::ChunkedKdtree<pcl::PointXYZ>::Ptr kdtree(
+    new mcl_3dl::ChunkedKdtree<pcl::PointXYZ>(10.0, 0.1));
   kdtree->setInputCloud(pc.makeShared());
   const auto tnow = boost::chrono::high_resolution_clock::now();
-  std::cerr << "- Generate kdtree: " << boost::chrono::duration<float>(tnow - ts).count() << " sec" << std::endl;
+  std::cerr << "- Generate kdtree: " << boost::chrono::duration<float>(tnow - ts).count() << " sec"
+            << std::endl;
 
   const auto ts2 = boost::chrono::high_resolution_clock::now();
-  mcl_3dl::RaycastUsingDDA<pcl::PointXYZ> ray(0.1, 0.1, 0.1, dda_grid_size, 0.5, dda_grid_size * std::sqrt(3));
+  mcl_3dl::RaycastUsingDDA<pcl::PointXYZ> ray(
+    0.1, 0.1, 0.1, dda_grid_size, 0.5, dda_grid_size * std::sqrt(3));
   // Set dummy ray to initialize DDA.
   ray.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(1.0, 0.0, 0.0));
   size_t collision_cnt = 0;
   size_t cnt = 0;
   const auto ts3 = boost::chrono::high_resolution_clock::now();
-  for (float y = -50.0; y < 50.0; y += 1.2)
-  {
-    for (float z = -50.0; z < 50.0; z += 1.1)
-    {
+  for (float y = -50.0; y < 50.0; y += 1.2) {
+    for (float z = -50.0; z < 50.0; z += 1.1) {
       cnt++;
       ray.setRay(kdtree, mcl_3dl::Vec3(0.0, 0.0, 0.0), mcl_3dl::Vec3(1.0, y * 2.0, z * 2.0));
       mcl_3dl::Raycast<pcl::PointXYZ>::CastResult point;
-      while (ray.getNextCastResult(point))
-      {
-        if (point.collision_)
-        {
+      while (ray.getNextCastResult(point)) {
+        if (point.collision_) {
           collision_cnt++;
           break;
         }
@@ -134,14 +126,14 @@ void performanceTestRaycastUsingDDA(const float dda_grid_size)
   }
   std::cerr << "- Collisions: " << collision_cnt << "/" << cnt << std::endl;
   const auto tnow2 = boost::chrono::high_resolution_clock::now();
-  std::cerr << "- mcl_3dl::RaycastUsingDDA Init: " << boost::chrono::duration<float>(ts3 - ts2).count() << " sec"
-            << std::endl;
-  std::cerr << "- mcl_3dl::RaycastUsingDDA: " << boost::chrono::duration<float>(tnow2 - ts3).count() << " sec"
-            << std::endl;
+  std::cerr << "- mcl_3dl::RaycastUsingDDA Init: "
+            << boost::chrono::duration<float>(ts3 - ts2).count() << " sec" << std::endl;
+  std::cerr << "- mcl_3dl::RaycastUsingDDA: " << boost::chrono::duration<float>(tnow2 - ts3).count()
+            << " sec" << std::endl;
   std::cerr << std::endl;
 }
 
-int main(int argc, char** argv)
+int main(int /* argc */, char ** /* argv */)
 {
   performanceTestRaycast(1.0);
   performanceTestRaycast(2.0);

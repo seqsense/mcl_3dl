@@ -27,16 +27,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_RAYCASTS_RAYCAST_USING_KDTREE_H
-#define MCL_3DL_RAYCASTS_RAYCAST_USING_KDTREE_H
+#ifndef MCL_3DL__RAYCASTS__RAYCAST_USING_KDTREE_H_
+#define MCL_3DL__RAYCASTS__RAYCAST_USING_KDTREE_H_
 
 #include <algorithm>
 #include <cmath>
 #include <vector>
 
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/raycast.h>
-#include <mcl_3dl/vec3.h>
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/raycast.h"
+#include "mcl_3dl/vec3.h"
 
 namespace mcl_3dl
 {
@@ -46,16 +46,19 @@ class RaycastUsingKDTree : public Raycast<POINT_TYPE>
   using typename Raycast<POINT_TYPE>::CastResult;
 
 public:
-  RaycastUsingKDTree(const float map_grid_size_x, const float map_grid_size_y, const float map_grid_size_z,
-                     const float hit_tolerance)
-    : Raycast<POINT_TYPE>()
-    , map_grid_min_(std::min({map_grid_size_x, map_grid_size_y, map_grid_size_z}))
-    , map_grid_max_(std::max({map_grid_size_x, map_grid_size_y, map_grid_size_z}))
-    , hit_tolerance_(hit_tolerance)
+  RaycastUsingKDTree(
+    const float map_grid_size_x, const float map_grid_size_y, const float map_grid_size_z,
+    const float hit_tolerance)
+  : Raycast<POINT_TYPE>(),
+    map_grid_min_(std::min({map_grid_size_x, map_grid_size_y, map_grid_size_z})),
+    map_grid_max_(std::max({map_grid_size_x, map_grid_size_y, map_grid_size_z})),
+    hit_tolerance_(hit_tolerance)
   {
   }
 
-  void setRay(typename ChunkedKdtree<POINT_TYPE>::Ptr kdtree, const Vec3& ray_begin, const Vec3& ray_end) final
+  void setRay(
+    typename ChunkedKdtree<POINT_TYPE>::Ptr kdtree, const Vec3 & ray_begin,
+    const Vec3 & ray_end) final
   {
     kdtree_ = kdtree;
     length_ = std::floor(((ray_end - ray_begin).norm() + hit_tolerance_) / map_grid_min_);
@@ -64,24 +67,22 @@ public:
     pos_ = ray_begin + inc_;
   }
 
-  bool getNextCastResult(CastResult& result) final
+  bool getNextCastResult(CastResult & result) final
   {
-    if (count_ >= length_)
-    {
+    if (count_ >= length_) {
       return false;
     }
     bool collision(false);
     float sin_ang(0.0);
 
-    const POINT_TYPE* point = nullptr;
+    const POINT_TYPE * point = nullptr;
     POINT_TYPE center;
     center.x = pos_.x_;
     center.y = pos_.y_;
     center.z = pos_.z_;
     std::vector<int> id(1);
     std::vector<float> sqdist(1);
-    if (kdtree_->radiusSearch(center, std::sqrt(2.0) * map_grid_max_ / 2.0, id, sqdist, 1))
-    {
+    if (kdtree_->radiusSearch(center, std::sqrt(2.0) * map_grid_max_ / 2.0, id, sqdist, 1)) {
       collision = true;
       point = &(kdtree_->getInputCloud()->points[id[0]]);
 
@@ -91,13 +92,11 @@ public:
       center_prev.x = pos_prev.x_;
       center_prev.y = pos_prev.y_;
       center_prev.z = pos_prev.z_;
-      if (kdtree_->radiusSearch(center_prev, map_grid_min_ * 2 + std::sqrt(2.0) * map_grid_max_ / 2.0, id, sqdist, 1))
-      {
+      if (kdtree_->radiusSearch(
+            center_prev, map_grid_min_ * 2 + std::sqrt(2.0) * map_grid_max_ / 2.0, id, sqdist, 1)) {
         const float d1 = std::sqrt(sqdist[0]);
         sin_ang = fabs(d1 - d0) / (map_grid_min_ * 2.0);
-      }
-      else
-      {
+      } else {
         sin_ang = 1.0;
       }
     }
@@ -121,4 +120,4 @@ private:
 
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_RAYCASTS_RAYCAST_USING_KDTREE_H
+#endif  // MCL_3DL__RAYCASTS__RAYCAST_USING_KDTREE_H_

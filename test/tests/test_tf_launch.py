@@ -1,4 +1,5 @@
-"""launch_testing for mcl_3dl bag-replay tf consistency test.
+"""
+launch_testing for mcl_3dl bag-replay tf consistency test.
 
 This is the ROS 2 port of tf_rostest.test.in. It plays back the short_test3
 bag and asserts that compare_tf succeeds (the published map->base_link tf
@@ -13,19 +14,19 @@ DDS-mediated message ordering. 2x is well within the engine's capacity.
 """
 
 import os
-import unittest
 from typing import Tuple
+import unittest
 
-import launch_testing
-import launch_testing.markers
-import pytest
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess
 from launch.launch_description_entity import LaunchDescriptionEntity
 from launch_ros.actions import Node
+import launch_testing
 from launch_testing.actions import ReadyToTest
+import launch_testing.markers
 from launch_testing.proc_info_handler import ActiveProcInfoHandler
+import pytest
 
 
 @pytest.mark.launch_test

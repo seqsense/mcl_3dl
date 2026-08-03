@@ -27,15 +27,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <memory>
-#include <vector>
-#include <string>
-
-#include <sensor_msgs/msg/point_cloud2.hpp>
-
-#include <mcl_3dl/cloud_accum.h>
-
 #include <gtest/gtest.h>
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "mcl_3dl/cloud_accum.h"
+#include "sensor_msgs/msg/point_cloud2.hpp"
 
 TEST(CloudAccumulationLogic, PassThrough)
 {
@@ -43,26 +42,20 @@ TEST(CloudAccumulationLogic, PassThrough)
   std::string seq;
   const auto msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
-  const auto process = [&seq]()
-  {
-    seq += "p";
-  };
-  const auto accumulateOK = [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg2) -> bool
-  {
+  const auto process = [&seq]() { seq += "p"; };
+  const auto accumulateOK =
+    [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg2) -> bool {
     EXPECT_EQ(msg, msg2);
     seq += "a";
     return true;
   };
-  const auto accumulateNG = [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg2) -> bool
-  {
+  const auto accumulateNG =
+    [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg2) -> bool {
     EXPECT_EQ(msg, msg2);
     seq += "a'";
     return false;
   };
-  const auto clear = [&seq]()
-  {
-    seq += "c";
-  };
+  const auto clear = [&seq]() { seq += "c"; };
   accum.push("1", msg, process, accumulateOK, clear);
   ASSERT_EQ(std::string("cap"), seq);
 
@@ -76,26 +69,20 @@ TEST(CloudAccumulationLogic, Accumulate)
   std::string seq;
   const auto msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
-  const auto process = [&seq]()
-  {
-    seq += "p";
-  };
-  const auto accumulateOK = [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg2) -> bool
-  {
+  const auto process = [&seq]() { seq += "p"; };
+  const auto accumulateOK =
+    [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg2) -> bool {
     EXPECT_EQ(msg, msg2);
     seq += "a";
     return true;
   };
-  const auto accumulateNG = [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg2) -> bool
-  {
+  const auto accumulateNG =
+    [&seq, msg](const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg2) -> bool {
     EXPECT_EQ(msg, msg2);
     seq += "a'";
     return false;
   };
-  const auto clear = [&seq]()
-  {
-    seq += "c";
-  };
+  const auto clear = [&seq]() { seq += "c"; };
 
   accum.push("1", msg, process, accumulateOK, clear);
   ASSERT_EQ(std::string("a"), seq);
@@ -162,7 +149,7 @@ TEST(CloudAccumulationLogic, Accumulate)
   ASSERT_EQ(std::string("aaaapcaaaaapcaa'caaaaaapcaa'c"), seq);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

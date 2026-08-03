@@ -27,22 +27,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <chrono>
 #include <memory>
 #include <vector>
 
-#include <gtest/gtest.h>
-
-#include <rclcpp/rclcpp.hpp>
-#include <rcl_interfaces/srv/set_parameters.hpp>
+#include "rcl_interfaces/srv/set_parameters.hpp"
+#include "rclcpp/rclcpp.hpp"
 
 TEST(Parameters, DynamicParameters)
 {
   auto node = rclcpp::Node::make_shared("test_parameters");
 
   // Create a client for the mcl_3dl node's set_parameters service
-  auto param_client = node->create_client<rcl_interfaces::srv::SetParameters>(
-      "mcl_3dl/set_parameters");
+  auto param_client =
+    node->create_client<rcl_interfaces::srv::SetParameters>("mcl_3dl/set_parameters");
 
   ASSERT_TRUE(param_client->wait_for_service(std::chrono::seconds(10)));
 
@@ -69,19 +69,18 @@ TEST(Parameters, DynamicParameters)
 
   auto future = param_client->async_send_request(request);
   ASSERT_EQ(
-      rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(5)),
-      rclcpp::FutureReturnCode::SUCCESS);
+    rclcpp::spin_until_future_complete(node, future, std::chrono::seconds(5)),
+    rclcpp::FutureReturnCode::SUCCESS);
 
   auto response = future.get();
   ASSERT_EQ(response->results.size(), 3u);
-  for (const auto& result : response->results)
-  {
+  for (const auto & result : response->results) {
     ASSERT_TRUE(result.successful);
   }
 
   // Verify parameters were set by reading them back
-  auto get_client = node->create_client<rcl_interfaces::srv::GetParameters>(
-      "mcl_3dl/get_parameters");
+  auto get_client =
+    node->create_client<rcl_interfaces::srv::GetParameters>("mcl_3dl/get_parameters");
   ASSERT_TRUE(get_client->wait_for_service(std::chrono::seconds(5)));
 
   auto get_request = std::make_shared<rcl_interfaces::srv::GetParameters::Request>();
@@ -89,8 +88,8 @@ TEST(Parameters, DynamicParameters)
 
   auto get_future = get_client->async_send_request(get_request);
   ASSERT_EQ(
-      rclcpp::spin_until_future_complete(node, get_future, std::chrono::seconds(5)),
-      rclcpp::FutureReturnCode::SUCCESS);
+    rclcpp::spin_until_future_complete(node, get_future, std::chrono::seconds(5)),
+    rclcpp::FutureReturnCode::SUCCESS);
 
   auto get_response = get_future.get();
   ASSERT_EQ(get_response->values.size(), 3u);
@@ -99,7 +98,7 @@ TEST(Parameters, DynamicParameters)
   ASSERT_DOUBLE_EQ(get_response->values[2].double_value, 0.7);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   rclcpp::init(argc, argv);

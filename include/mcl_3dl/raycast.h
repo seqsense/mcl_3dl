@@ -27,14 +27,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_RAYCAST_H
-#define MCL_3DL_RAYCAST_H
+#ifndef MCL_3DL__RAYCAST_H_
+#define MCL_3DL__RAYCAST_H_
 
 #include <cmath>
 #include <vector>
 
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/vec3.h>
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/vec3.h"
 
 namespace mcl_3dl
 {
@@ -48,31 +48,23 @@ public:
     Vec3 pos_;
     bool collision_;
     float sin_angle_;
-    const POINT_TYPE* point_;
+    const POINT_TYPE * point_;
 
-    CastResult()
-      : pos_(0, 0, 0)
-      , collision_(false)
-      , sin_angle_(0)
-      , point_(nullptr)
-    {
-    }
+    CastResult() : pos_(0, 0, 0), collision_(false), sin_angle_(0), point_(nullptr) {}
 
-    CastResult(const Vec3& pos, const bool collision, const float sin_angle, const POINT_TYPE* point)
-      : pos_(pos)
-      , collision_(collision)
-      , sin_angle_(sin_angle)
-      , point_(point)
+    CastResult(
+      const Vec3 & pos, const bool collision, const float sin_angle, const POINT_TYPE * point)
+    : pos_(pos), collision_(collision), sin_angle_(sin_angle), point_(point)
     {
     }
   };
 
-  Raycast()
-  {
-  }
-  virtual void setRay(typename ChunkedKdtree<POINT_TYPE>::Ptr kdtree, const Vec3& ray_begin, const Vec3& ray_end) = 0;
-  virtual bool getNextCastResult(CastResult& result) = 0;
+  Raycast() {}
+  virtual void setRay(
+    typename ChunkedKdtree<POINT_TYPE>::Ptr kdtree, const Vec3 & ray_begin,
+    const Vec3 & ray_end) = 0;
+  virtual bool getNextCastResult(CastResult & result) = 0;
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_RAYCAST_H
+#endif  // MCL_3DL__RAYCAST_H_

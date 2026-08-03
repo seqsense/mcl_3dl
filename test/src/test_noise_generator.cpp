@@ -27,24 +27,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <vector>
 
-#include <gtest/gtest.h>
-
-#include <mcl_3dl/noise_generators/diagonal_noise_generator.h>
-#include <mcl_3dl/noise_generators/multivariate_noise_generator.h>
-#include <mcl_3dl/state_6dof.h>
+#include "mcl_3dl/noise_generators/diagonal_noise_generator.h"
+#include "mcl_3dl/noise_generators/multivariate_noise_generator.h"
+#include "mcl_3dl/state_6dof.h"
 
 namespace mcl_3dl
 {
 template <typename NOISE_GEN>
-void testNoiseGeneratorResults(const std::vector<float>& expected_means,
-                               const std::vector<float>& expected_covariances,
-                               const NOISE_GEN& gen,
-                               const float allowable_error_of_zero_cov)
+void testNoiseGeneratorResults(
+  const std::vector<float> & expected_means, const std::vector<float> & expected_covariances,
+  const NOISE_GEN & gen, const float allowable_error_of_zero_cov)
 {
   const size_t dim = expected_means.size();
   ASSERT_EQ(dim, gen.getDimension());
@@ -52,53 +51,47 @@ void testNoiseGeneratorResults(const std::vector<float>& expected_means,
 
   std::mt19937 mt(123);
   std::vector<std::vector<float>> results(dim);
-  for (size_t i = 0; i < 10000; ++i)
-  {
+  for (size_t i = 0; i < 10000; ++i) {
     const auto result = gen(mt);
     ASSERT_EQ(dim, result.size());
-    for (size_t j = 0; j < dim; ++j)
-    {
+    for (size_t j = 0; j < dim; ++j) {
       results[j].push_back(result[j]);
     }
   }
   std::vector<float> averages;
-  for (size_t i = 0; i < dim; ++i)
-  {
-    const float average = std::accumulate(results[i].begin(), results[i].end(), 0.0) / results[i].size();
+  for (size_t i = 0; i < dim; ++i) {
+    const float average =
+      std::accumulate(results[i].begin(), results[i].end(), 0.0) / results[i].size();
     EXPECT_NEAR(average, expected_means[i], 0.1);
     averages.push_back(average);
   }
-  for (size_t i = 0; i < dim; ++i)
-  {
-    for (size_t j = i; j < dim; ++j)
-    {
+  for (size_t i = 0; i < dim; ++i) {
+    for (size_t j = i; j < dim; ++j) {
       float covar = 0;
-      for (size_t n = 0; n < results[i].size(); ++n)
-      {
+      for (size_t n = 0; n < results[i].size(); ++n) {
         covar += (results[i][n] - averages[i]) * (results[j][n] - averages[j]);
       }
       covar /= results[i].size();
       const float expected_covar = expected_covariances[i + j * dim];
-      if (expected_covar == 0.0)
-      {
-        EXPECT_NEAR(covar, expected_covar, allowable_error_of_zero_cov) << "Error at " << i << "," << j;
-      }
-      else
-      {
-        EXPECT_GE(covar, expected_covariances[i + j * dim] * 0.9 * 0.9) << "Error at " << i << "," << j;
-        EXPECT_LE(covar, expected_covariances[i + j * dim] * 1.1 * 1.1) << "Error at " << i << "," << j;
+      if (expected_covar == 0.0) {
+        EXPECT_NEAR(covar, expected_covar, allowable_error_of_zero_cov)
+          << "Error at " << i << "," << j;
+      } else {
+        EXPECT_GE(covar, expected_covariances[i + j * dim] * 0.9 * 0.9)
+          << "Error at " << i << "," << j;
+        EXPECT_LE(covar, expected_covariances[i + j * dim] * 1.1 * 1.1)
+          << "Error at " << i << "," << j;
       }
     }
   }
 }
 
-std::vector<float> toCovarianceMatrix(const std::vector<float>& sigma)
+std::vector<float> toCovarianceMatrix(const std::vector<float> & sigma)
 {
   const size_t dim = sigma.size();
 
   std::vector<float> result(dim * dim, 0.0);
-  for (size_t i = 0; i < sigma.size(); ++i)
-  {
+  for (size_t i = 0; i < sigma.size(); ++i) {
     result[i + i * dim] = sigma[i] * sigma[i];
   }
   return result;
@@ -139,12 +132,11 @@ TEST(NoiseGenerator, DiagonalNoiseGenerator_ZeroSigma)
 TEST(NoiseGenerator, MultivariateNoiseGenerator)
 {
   const std::vector<float> expected_mean = {-1.0, 2.0, -3.0};
-  const std::vector<float> expected_covariance =
-      {
-          1.0, 0.3, 0.7,  //
-          0.3, 2.0, 0.4,  //
-          0.7, 0.4, 1.0,  //
-      };
+  const std::vector<float> expected_covariance = {
+    1.0, 0.3, 0.7,  //
+    0.3, 2.0, 0.4,  //
+    0.7, 0.4, 1.0,  //
+  };
 
   const MultivariateNoiseGenerator<float> gen(expected_mean, expected_covariance);
   testNoiseGeneratorResults(expected_mean, expected_covariance, gen, 0.01);
@@ -153,15 +145,14 @@ TEST(NoiseGenerator, MultivariateNoiseGenerator)
 TEST(NoiseGenerator, MultivariateNoiseGeneratorForState6Dof)
 {
   const std::vector<float> expected_mean = {5.0, -6.0, 7.0, -0.3, 0.2, 0.1};
-  const std::vector<float> expected_covariance =
-      {
-          2.000, 0.500, 0.600, 0.050, 0.040, 0.000,  //
-          0.500, 2.500, 0.400, 0.060, 0.070, 0.080,  //
-          0.600, 0.400, 3.000, 0.090, 0.020, 0.110,  //
-          0.050, 0.060, 0.090, 0.200, 0.045, 0.035,  //
-          0.040, 0.070, 0.020, 0.045, 0.150, 0.015,  //
-          0.000, 0.080, 0.110, 0.035, 0.015, 0.100,  //
-      };
+  const std::vector<float> expected_covariance = {
+    2.000, 0.500, 0.600, 0.050, 0.040, 0.000,  //
+    0.500, 2.500, 0.400, 0.060, 0.070, 0.080,  //
+    0.600, 0.400, 3.000, 0.090, 0.020, 0.110,  //
+    0.050, 0.060, 0.090, 0.200, 0.045, 0.035,  //
+    0.040, 0.070, 0.020, 0.045, 0.150, 0.015,  //
+    0.000, 0.080, 0.110, 0.035, 0.015, 0.100,  //
+  };
 
   const mcl_3dl::Vec3 mean_pos(expected_mean[0], expected_mean[1], expected_mean[2]);
   const mcl_3dl::Quat mean_rot(mcl_3dl::Vec3(expected_mean[3], expected_mean[4], expected_mean[5]));
@@ -173,7 +164,7 @@ TEST(NoiseGenerator, MultivariateNoiseGeneratorForState6Dof)
 
 }  // namespace mcl_3dl
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

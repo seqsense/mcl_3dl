@@ -164,8 +164,7 @@ if(MCL_3DL_EXTRA_TESTS OR "$ENV{MCL_3DL_EXTRA_TESTS}" STREQUAL "ON")
   add_dependencies(compare_tf
         ${PROJECT_NAME}_short_test3.bag
         ${PROJECT_NAME}_short_test_ref.topic
-        mcl_3dl
-      )
+        mcl_3dl)
 
 else()
 

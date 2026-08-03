@@ -27,15 +27,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_CLOUD_ACCUM_H
-#define MCL_3DL_CLOUD_ACCUM_H
+#ifndef MCL_3DL__CLOUD_ACCUM_H_
+#define MCL_3DL__CLOUD_ACCUM_H_
 
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <sensor_msgs/msg/point_cloud2.hpp>
+#include "sensor_msgs/msg/point_cloud2.hpp"
 
 namespace mcl_3dl
 {
@@ -45,11 +45,10 @@ public:
   using Ptr = std::shared_ptr<CloudAccumulationLogicBase>;
 
   virtual void push(
-      const std::string& key,
-      const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg,
-      std::function<void()> process,
-      std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>&)> accumulate,
-      std::function<void()> clear) = 0;
+    const std::string & key, const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg,
+    std::function<void()> process,
+    std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &)> accumulate,
+    std::function<void()> clear) = 0;
 
   virtual void reset() = 0;
 };
@@ -58,35 +57,27 @@ class CloudAccumulationLogicPassThrough : public CloudAccumulationLogicBase
 {
 public:
   void push(
-      const std::string& key,
-      const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg,
-      std::function<void()> process,
-      std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>&)> accumulate,
-      std::function<void()> clear) final;
+    const std::string & key, const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg,
+    std::function<void()> process,
+    std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &)> accumulate,
+    std::function<void()> clear) final;
 
-  inline void reset() final
-  {
-  }
+  inline void reset() final {}
 };
 
 class CloudAccumulationLogic : public CloudAccumulationLogicBase
 {
 public:
-  inline CloudAccumulationLogic(
-      const size_t accum,
-      const size_t accum_max)
-    : accum_(accum)
-    , accum_max_(accum_max)
-    , cnt_accum_(0)
+  inline CloudAccumulationLogic(const size_t accum, const size_t accum_max)
+  : accum_(accum), accum_max_(accum_max), cnt_accum_(0)
   {
   }
 
   void push(
-      const std::string& key,
-      const std::shared_ptr<const sensor_msgs::msg::PointCloud2>& msg,
-      std::function<void()> process,
-      std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2>&)> accumulate,
-      std::function<void()> clear) final;
+    const std::string & key, const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg,
+    std::function<void()> process,
+    std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &)> accumulate,
+    std::function<void()> clear) final;
 
   void reset() final;
 
@@ -98,4 +89,4 @@ private:
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_CLOUD_ACCUM_H
+#endif  // MCL_3DL__CLOUD_ACCUM_H_

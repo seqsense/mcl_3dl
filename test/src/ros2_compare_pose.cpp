@@ -39,6 +39,8 @@
 // exist in ROS 2, so this version loads the YAML reference directly via
 // the `ref_path_file` parameter.
 
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -46,33 +48,28 @@
 #include <sstream>
 #include <string>
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <nav_msgs/msg/path.hpp>
-#include <tf2/utils.h>
-#include <yaml-cpp/yaml.h>
-
-#include <gtest/gtest.h>
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "tf2/utils.h"
+#include "yaml-cpp/yaml.h"
 
 namespace
 {
 
 // Parse the rostopic-style YAML dump of nav_msgs/Path.
 // Tolerates both "secs/nsecs" (ROS 1 dump) and "sec/nanosec" (ROS 2) keys.
-nav_msgs::msg::Path loadPathYaml(const std::string& path_file)
+nav_msgs::msg::Path loadPathYaml(const std::string & path_file)
 {
   std::ifstream ifs(path_file);
-  if (!ifs)
-  {
+  if (!ifs) {
     throw std::runtime_error("failed to open ref Path file: " + path_file);
   }
   std::stringstream buf;
   buf << ifs.rdbuf();
   YAML::Node root = YAML::Load(buf.str());
 
-  const auto stamp_of = [](const YAML::Node& n) -> builtin_interfaces::msg::Time
-  {
+  const auto stamp_of = [](const YAML::Node & n) -> builtin_interfaces::msg::Time {
     builtin_interfaces::msg::Time t;
     if (n["sec"])
       t.sec = n["sec"].as<int32_t>();
@@ -86,26 +83,22 @@ nav_msgs::msg::Path loadPathYaml(const std::string& path_file)
   };
 
   nav_msgs::msg::Path path;
-  if (root["header"])
-  {
+  if (root["header"]) {
     path.header.stamp = stamp_of(root["header"]["stamp"]);
     if (root["header"]["frame_id"])
       path.header.frame_id = root["header"]["frame_id"].as<std::string>();
   }
-  for (const auto& p : root["poses"])
-  {
+  for (const auto & p : root["poses"]) {
     geometry_msgs::msg::PoseStamped ps;
-    if (p["header"])
-    {
+    if (p["header"]) {
       ps.header.stamp = stamp_of(p["header"]["stamp"]);
-      if (p["header"]["frame_id"])
-        ps.header.frame_id = p["header"]["frame_id"].as<std::string>();
+      if (p["header"]["frame_id"]) ps.header.frame_id = p["header"]["frame_id"].as<std::string>();
     }
-    const auto& pos = p["pose"]["position"];
+    const auto & pos = p["pose"]["position"];
     ps.pose.position.x = pos["x"].as<double>();
     ps.pose.position.y = pos["y"].as<double>();
     ps.pose.position.z = pos["z"].as<double>();
-    const auto& q = p["pose"]["orientation"];
+    const auto & q = p["pose"]["orientation"];
     ps.pose.orientation.x = q["x"].as<double>();
     ps.pose.orientation.y = q["y"].as<double>();
     ps.pose.orientation.z = q["z"].as<double>();
@@ -123,10 +116,7 @@ protected:
   static rclcpp::Node::SharedPtr node_;
 
 public:
-  static void SetNode(const rclcpp::Node::SharedPtr& node)
-  {
-    node_ = node;
-  }
+  static void SetNode(const rclcpp::Node::SharedPtr & node) { node_ = node; }
 };
 
 rclcpp::Node::SharedPtr ComparePoseFixture::node_ = nullptr;
@@ -141,39 +131,35 @@ TEST_F(ComparePoseFixture, Compare)
 
   const nav_msgs::msg::Path path = loadPathYaml(ref_file);
   ASSERT_FALSE(path.poses.empty()) << "ref Path is empty: " << ref_file;
-  std::fprintf(stderr, "compare_pose: loaded %zu reference poses from %s\n",
-               path.poses.size(), ref_file.c_str());
+  std::fprintf(
+    stderr, "compare_pose: loaded %zu reference poses from %s\n", path.poses.size(),
+    ref_file.c_str());
 
   size_t i_path = 0;
   bool finished = false;
 
-  auto cb_pose = [&path, &i_path, &error_limit, &finished, this](
-                     const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg)
-  {
-    if (i_path >= path.poses.size())
-      return;
+  auto cb_pose = [&path, &i_path, &error_limit, &finished,
+                  this](const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr & msg) {
+    if (i_path >= path.poses.size()) return;
     const rclcpp::Time stamp(path.poses[i_path].header.stamp);
-    if (stamp >= node_->now())
-      return;
+    if (stamp >= node_->now()) return;
 
     const float x_error = path.poses[i_path].pose.position.x - msg->pose.pose.position.x;
     const float y_error = path.poses[i_path].pose.position.y - msg->pose.pose.position.y;
     const float z_error = path.poses[i_path].pose.position.z - msg->pose.pose.position.z;
 
     tf2::Quaternion q_ref(
-        path.poses[i_path].pose.orientation.x, path.poses[i_path].pose.orientation.y,
-        path.poses[i_path].pose.orientation.z, path.poses[i_path].pose.orientation.w);
+      path.poses[i_path].pose.orientation.x, path.poses[i_path].pose.orientation.y,
+      path.poses[i_path].pose.orientation.z, path.poses[i_path].pose.orientation.w);
     tf2::Quaternion q_est(
-        msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
-        msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+      msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z,
+      msg->pose.pose.orientation.w);
     float yaw_error = tf2::getYaw(q_ref) - tf2::getYaw(q_est);
-    while (yaw_error > M_PI)
-      yaw_error -= 2 * M_PI;
-    while (yaw_error < -M_PI)
-      yaw_error += 2 * M_PI;
+    while (yaw_error > M_PI) yaw_error -= 2 * M_PI;
+    while (yaw_error < -M_PI) yaw_error += 2 * M_PI;
 
     const float error =
-        std::sqrt(std::pow(x_error, 2) + std::pow(y_error, 2) + std::pow(z_error, 2));
+      std::sqrt(std::pow(x_error, 2) + std::pow(y_error, 2) + std::pow(z_error, 2));
     const float x_sigma = std::sqrt(msg->pose.covariance[0 * 6 + 0]);
     const float y_sigma = std::sqrt(msg->pose.covariance[1 * 6 + 1]);
     const float z_sigma = std::sqrt(msg->pose.covariance[2 * 6 + 2]);
@@ -187,33 +173,31 @@ TEST_F(ComparePoseFixture, Compare)
     std::fprintf(stderr, "  yaw error/3sigma=%0.3f/%0.3f\n", yaw_error, yaw_sigma * 3.0);
 
     i_path++;
-    if (i_path >= path.poses.size())
-      finished = true;
+    if (i_path >= path.poses.size()) finished = true;
 
     ASSERT_FALSE(error > error_limit) << "Position error is larger then expected.";
     ASSERT_FALSE(std::fabs(x_error) > x_sigma * 3.0)
-        << "Estimated variance is too small to continue tracking. (x)";
+      << "Estimated variance is too small to continue tracking. (x)";
     ASSERT_FALSE(std::fabs(y_error) > y_sigma * 3.0)
-        << "Estimated variance is too small to continue tracking. (y)";
+      << "Estimated variance is too small to continue tracking. (y)";
     ASSERT_FALSE(std::fabs(z_error) > z_sigma * 3.0)
-        << "Estimated variance is too small to continue tracking. (z)";
+      << "Estimated variance is too small to continue tracking. (z)";
     ASSERT_FALSE(std::fabs(yaw_error) > yaw_sigma * 3.0)
-        << "Estimated variance is too small to continue tracking. (yaw)";
+      << "Estimated variance is too small to continue tracking. (yaw)";
   };
 
   auto sub_pose = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "/amcl_pose", 1, cb_pose);
+    "/amcl_pose", 1, cb_pose);
 
   rclcpp::Rate wait(10);
-  while (rclcpp::ok() && !finished)
-  {
+  while (rclcpp::ok() && !finished) {
     rclcpp::spin_some(node_);
     wait.sleep();
   }
   std::fprintf(stderr, "compare_pose finished\n");
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   rclcpp::init(argc, argv);

@@ -27,15 +27,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <cmath>
 
-#include <ros/ros.h>
-
-#include <nav_msgs/Path.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <tf2/utils.h>
-
-#include <gtest/gtest.h>
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "nav_msgs/Path.h"
+#include "ros/ros.h"
+#include "tf2/utils.h"
 
 TEST(ComparePose, Compare)
 {
@@ -47,35 +46,31 @@ TEST(ComparePose, Compare)
   double error_limit;
   nh.param("error_limit", error_limit, 0.3);
 
-  const boost::function<void(const nav_msgs::Path::ConstPtr&)> cb_path =
-      [&path, &i_path](const nav_msgs::Path::ConstPtr& msg) -> void
-  {
+  const boost::function<void(const nav_msgs::Path::ConstPtr &)> cb_path =
+    [&path, &i_path](const nav_msgs::Path::ConstPtr & msg) -> void {
     path = *msg;
     i_path = 0;
     fprintf(stderr, "compare_pose: reference received\n");
   };
-  const boost::function<void(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr&)> cb_pose =
-      [&path, &i_path, &error_limit](const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg) -> void
-  {
-    if (path.poses.size() > 0 && path.poses[i_path].header.stamp < ros::Time::now())
-    {
+  const boost::function<void(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &)> cb_pose =
+    [&path, &i_path,
+     &error_limit](const geometry_msgs::PoseWithCovarianceStamped::ConstPtr & msg) -> void {
+    if (path.poses.size() > 0 && path.poses[i_path].header.stamp < ros::Time::now()) {
       const float x_error = path.poses[i_path].pose.position.x - msg->pose.pose.position.x;
       const float y_error = path.poses[i_path].pose.position.y - msg->pose.pose.position.y;
       const float z_error = path.poses[i_path].pose.position.z - msg->pose.pose.position.z;
       float yaw_error =
-          tf2::getYaw(path.poses[i_path].pose.orientation) - tf2::getYaw(msg->pose.pose.orientation);
-      while (yaw_error > M_PI)
-        yaw_error -= 2 * M_PI;
-      while (yaw_error < -M_PI)
-        yaw_error += 2 * M_PI;
-      const float error = std::sqrt(std::pow(x_error, 2) + std::pow(y_error, 2) + std::pow(z_error, 2));
+        tf2::getYaw(path.poses[i_path].pose.orientation) - tf2::getYaw(msg->pose.pose.orientation);
+      while (yaw_error > M_PI) yaw_error -= 2 * M_PI;
+      while (yaw_error < -M_PI) yaw_error += 2 * M_PI;
+      const float error =
+        std::sqrt(std::pow(x_error, 2) + std::pow(y_error, 2) + std::pow(z_error, 2));
       const float x_sigma = std::sqrt(msg->pose.covariance[0 * 6 + 0]);
       const float y_sigma = std::sqrt(msg->pose.covariance[1 * 6 + 1]);
       const float z_sigma = std::sqrt(msg->pose.covariance[2 * 6 + 2]);
       const float yaw_sigma = std::sqrt(msg->pose.covariance[5 * 6 + 5]);
 
-      fprintf(stderr, "compare_pose[%lu/%lu]:\n",
-              i_path, path.poses.size());
+      fprintf(stderr, "compare_pose[%lu/%lu]:\n", i_path, path.poses.size());
       fprintf(stderr, "  position error/limit=%0.3f/%0.3f\n", error, error_limit);
       fprintf(stderr, "  x error/3sigma=%0.3f/%0.3f\n", x_error, x_sigma * 3.0);
       fprintf(stderr, "  y error/3sigma=%0.3f/%0.3f\n", y_error, y_sigma * 3.0);
@@ -83,19 +78,17 @@ TEST(ComparePose, Compare)
       fprintf(stderr, "  yaw error/3sigma=%0.3f/%0.3f\n", yaw_error, yaw_sigma * 3.0);
 
       i_path++;
-      if (i_path >= path.poses.size())
-        ros::shutdown();
+      if (i_path >= path.poses.size()) ros::shutdown();
 
-      ASSERT_FALSE(error > error_limit)
-          << "Position error is larger then expected.";
+      ASSERT_FALSE(error > error_limit) << "Position error is larger then expected.";
       ASSERT_FALSE(fabs(x_error) > x_sigma * 3.0)
-          << "Estimated variance is too small to continue tracking. (x)";
+        << "Estimated variance is too small to continue tracking. (x)";
       ASSERT_FALSE(fabs(y_error) > y_sigma * 3.0)
-          << "Estimated variance is too small to continue tracking. (y)";
+        << "Estimated variance is too small to continue tracking. (y)";
       ASSERT_FALSE(fabs(z_error) > z_sigma * 3.0)
-          << "Estimated variance is too small to continue tracking. (z)";
+        << "Estimated variance is too small to continue tracking. (z)";
       ASSERT_FALSE(fabs(yaw_error) > yaw_sigma * 3.0)
-          << "Estimated variance is too small to continue tracking. (yaw)";
+        << "Estimated variance is too small to continue tracking. (yaw)";
     }
   };
 
@@ -104,15 +97,14 @@ TEST(ComparePose, Compare)
 
   ros::Rate wait(10);
 
-  while (ros::ok())
-  {
+  while (ros::ok()) {
     ros::spinOnce();
     wait.sleep();
   }
   fprintf(stderr, "compare_pose finished\n");
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "compare_pose");

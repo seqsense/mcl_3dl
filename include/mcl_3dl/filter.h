@@ -27,8 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_FILTER_H
-#define MCL_3DL_FILTER_H
+#ifndef MCL_3DL__FILTER_H_
+#define MCL_3DL__FILTER_H_
 
 #include <cassert>
 #include <cmath>
@@ -51,12 +51,11 @@ protected:
   float k_[4];
 
 public:
-  inline Filter(const enum type_t type, const float time_const, const float out0, const bool angle = false)
-    : angle_(angle)
-    , out_(out0)
+  inline Filter(
+    const enum type_t type, const float time_const, const float out0, const bool angle = false)
+  : angle_(angle), out_(out0)
   {
-    switch (type)
-    {
+    switch (type) {
       case FILTER_LPF:
         k_[3] = -1 / (1.0 + 2 * time_const);
         k_[2] = -k_[3];
@@ -82,8 +81,7 @@ public:
   {
     assert(std::isfinite(in));
     float tmp_in = in;
-    if (angle_)
-    {
+    if (angle_) {
       tmp_in = out_ + remainder(in - out_, M_PI * 2.0);
     }
     x_ = k_[0] * tmp_in + k_[1] * x_;
@@ -92,11 +90,8 @@ public:
     assert(std::isfinite(out_));
     return out_;
   }
-  inline float get() const
-  {
-    return out_;
-  }
+  inline float get() const { return out_; }
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_FILTER_H
+#endif  // MCL_3DL__FILTER_H_

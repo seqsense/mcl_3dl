@@ -27,13 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_FILTER_VEC3_H
-#define MCL_3DL_FILTER_VEC3_H
+#ifndef MCL_3DL__FILTER_VEC3_H_
+#define MCL_3DL__FILTER_VEC3_H_
 
 #include <array>
 
-#include <mcl_3dl/filter.h>
-#include <mcl_3dl/vec3.h>
+#include "mcl_3dl/filter.h"
+#include "mcl_3dl/vec3.h"
 
 namespace mcl_3dl
 {
@@ -44,34 +44,29 @@ private:
   std::array<Filter, 3> f_;
 
 public:
-  inline FilterVec3(Filter::type_t type, const Vec3& time_const, const Vec3& out0, const bool angle = false)
-    : x_(out0)
-    , f_(
-          {
-              Filter(type, time_const[0], out0[0], angle),
-              Filter(type, time_const[1], out0[1], angle),
-              Filter(type, time_const[2], out0[2], angle),
-          }  //
-      )
+  inline FilterVec3(
+    Filter::type_t type, const Vec3 & time_const, const Vec3 & out0, const bool angle = false)
+  : x_(out0),
+    f_({
+      Filter(type, time_const[0], out0[0], angle),
+      Filter(type, time_const[1], out0[1], angle),
+      Filter(type, time_const[2], out0[2], angle),
+    }  //
+    )
   {
   }
-  inline void set(const Vec3& out0)
+  inline void set(const Vec3 & out0)
   {
     x_ = out0;
-    for (int i = 0; i < 3; i++)
-      f_[i].set(out0[i]);
+    for (int i = 0; i < 3; i++) f_[i].set(out0[i]);
   }
-  inline Vec3 in(const Vec3& in)
+  inline Vec3 in(const Vec3 & in)
   {
-    for (int i = 0; i < 3; i++)
-      x_[i] = f_[i].in(in[i]);
+    for (int i = 0; i < 3; i++) x_[i] = f_[i].in(in[i]);
     return x_;
   }
-  inline Vec3 get() const
-  {
-    return x_;
-  }
+  inline Vec3 get() const { return x_; }
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_FILTER_VEC3_H
+#endif  // MCL_3DL__FILTER_VEC3_H_

@@ -27,23 +27,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <geometry_msgs/msg/transform_stamped.hpp>
-#include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#include <tf2_ros/transform_broadcaster.h>
+#include <gtest/gtest.h>
 
 #include <string>
 
-#include <gtest/gtest.h>
+#include "geometry_msgs/msg/transform_stamped.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2_ros/transform_broadcaster.h"
 
 namespace
 {
 void GenerateSinglePointPointcloud2(
-    sensor_msgs::msg::PointCloud2& cloud,
-    const float x, const float y, const float z)
+  sensor_msgs::msg::PointCloud2 & cloud, const float x, const float y, const float z)
 {
   cloud.height = 1;
   cloud.width = 1;
@@ -60,10 +58,8 @@ void GenerateSinglePointPointcloud2(
   *iter_z = z;
 }
 void publishSinglePointPointcloud2(
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr& pub,
-    const float x, const float y, const float z,
-    const std::string frame_id,
-    const rclcpp::Time stamp)
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr & pub, const float x, const float y,
+  const float z, const std::string frame_id, const rclcpp::Time stamp)
 {
   sensor_msgs::msg::PointCloud2 cloud;
   cloud.header.frame_id = frame_id;
@@ -79,20 +75,17 @@ TEST(TransformFailure, NoDeadAgainstTransformFailure)
   tf2_ros::TransformBroadcaster tfb(node);
   auto pub_cloud = node->create_publisher<sensor_msgs::msg::PointCloud2>("cloud", 1);
   auto pub_mapcloud = node->create_publisher<sensor_msgs::msg::PointCloud2>(
-      "mapcloud", rclcpp::QoS(1).transient_local());
+    "mapcloud", rclcpp::QoS(1).transient_local());
 
   rclcpp::WallRate rate(10);
-  publishSinglePointPointcloud2(
-      pub_mapcloud,
-      0.0, 0.0, 0.0, "map", node->now());
+  publishSinglePointPointcloud2(pub_mapcloud, 0.0, 0.0, 0.0, "map", node->now());
 
   // Wait a bit for the mcl_3dl node to be ready
   rclcpp::sleep_for(std::chrono::seconds(2));
 
   int cnt = 0;
   // mcl_3dl is launched in the same test. We just verify it does not crash.
-  while (rclcpp::ok())
-  {
+  while (rclcpp::ok()) {
     ++cnt;
     geometry_msgs::msg::TransformStamped trans;
     trans.header.stamp = rclcpp::Time(node->now()) + rclcpp::Duration::from_seconds(0.1);
@@ -106,24 +99,19 @@ TEST(TransformFailure, NoDeadAgainstTransformFailure)
     trans.child_frame_id = "odom";
     tfb.sendTransform(trans);
 
-    if (cnt > 10)
-    {
+    if (cnt > 10) {
       trans.header.frame_id = "base_link";
       trans.child_frame_id = "laser_link_base";
       tfb.sendTransform(trans);
     }
-    if (cnt > 20)
-    {
+    if (cnt > 20) {
       trans.header.frame_id = "odom";
       trans.child_frame_id = "base_link";
       tfb.sendTransform(trans);
     }
-    if (cnt > 30)
-      break;
+    if (cnt > 30) break;
 
-    publishSinglePointPointcloud2(
-        pub_cloud,
-        0.0, 0.0, 0.0, "laser_link", node->now());
+    publishSinglePointPointcloud2(pub_cloud, 0.0, 0.0, 0.0, "laser_link", node->now());
 
     rclcpp::spin_some(node);
     rate.sleep();
@@ -131,7 +119,7 @@ TEST(TransformFailure, NoDeadAgainstTransformFailure)
   ASSERT_TRUE(rclcpp::ok());
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   rclcpp::init(argc, argv);

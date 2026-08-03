@@ -27,15 +27,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <thread>  // NOLINT(build/c++11)
-
 #include <gtest/gtest.h>
 
-#include <dynamic_reconfigure/client.h>
-#include <ros/ros.h>
+#include <thread>  // NOLINT(build/c++11)
 
-#include <mcl_3dl/MCL3DLParamsConfig.h>
-#include <mcl_3dl/parameters.h>
+#include "dynamic_reconfigure/client.h"
+#include "mcl_3dl/MCL3DLParamsConfig.h"
+#include "mcl_3dl/parameters.h"
+#include "ros/ros.h"
 
 TEST(Parameters, DynamicParameters)
 {
@@ -54,12 +53,10 @@ TEST(Parameters, DynamicParameters)
   const ros::Duration wait(0.1);
   dynamic_reconfigure::Client<mcl_3dl::MCL3DLParamsConfig> dynamic_reconfigure_client("/mcl_3dl");
   bool param_server_ready = false;
-  while (ros::ok())
-  {
+  while (ros::ok()) {
     // Wait until parameter server becomes ready
     mcl_3dl::MCL3DLParamsConfig dummy;
-    if (dynamic_reconfigure_client.getCurrentConfiguration(dummy, ros::Duration(0.1)))
-    {
+    if (dynamic_reconfigure_client.getCurrentConfiguration(dummy, ros::Duration(0.1))) {
       param_server_ready = true;
       break;
     }
@@ -68,22 +65,18 @@ TEST(Parameters, DynamicParameters)
   }
   ASSERT_TRUE(param_server_ready);
 
-  std::thread t(
-      [&dynamic_reconfigure_client]()
-      {
-        mcl_3dl::MCL3DLParamsConfig config;
-        config.std_warn_thresh_xy = 0.5;
-        config.std_warn_thresh_z = 0.6;
-        config.std_warn_thresh_yaw = 0.7;
-        if (!dynamic_reconfigure_client.setConfiguration(config))
-        {
-          FAIL();
-        }
-      });  // NOLINT(whitespace/braces)
+  std::thread t([&dynamic_reconfigure_client]() {
+    mcl_3dl::MCL3DLParamsConfig config;
+    config.std_warn_thresh_xy = 0.5;
+    config.std_warn_thresh_z = 0.6;
+    config.std_warn_thresh_yaw = 0.7;
+    if (!dynamic_reconfigure_client.setConfiguration(config)) {
+      FAIL();
+    }
+  });  // NOLINT(whitespace/braces)
 
   const ros::Time deadline = ros::Time::now() + ros::Duration(0.5);
-  while (ros::ok() && ros::Time::now() < deadline)
-  {
+  while (ros::ok() && ros::Time::now() < deadline) {
     ros::spinOnce();
     wait.sleep();
   }
@@ -94,7 +87,7 @@ TEST(Parameters, DynamicParameters)
   ASSERT_FLOAT_EQ(mcl_3dl_params.std_warn_thresh_[2], 0.7);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_parameters");

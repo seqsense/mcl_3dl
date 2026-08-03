@@ -27,26 +27,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "mcl_3dl/point_types.h"
+
 #include <string>
 
-#include <mcl_3dl/point_types.h>
-
 #ifdef IS_ROS1_BUILD
-#include <pcl_ros/point_cloud.h>
-#include <pcl_ros/transforms.h>
-#include <pcl_ros/impl/transforms.hpp>
+#include "pcl_ros/impl/transforms.hpp"
+#include "pcl_ros/point_cloud.h"
+#include "pcl_ros/transforms.h"
 
 template bool pcl_ros::transformPointCloud<mcl_3dl::PointXYZIL>(
-    const std::string&,
-    const ros::Time&,
-    const pcl::PointCloud<mcl_3dl::PointXYZIL>&,
-    const std::string&,
-    pcl::PointCloud<mcl_3dl::PointXYZIL>&,
-    const tf::TransformListener&);
+  const std::string &, const ros::Time &, const pcl::PointCloud<mcl_3dl::PointXYZIL> &,
+  const std::string &, pcl::PointCloud<mcl_3dl::PointXYZIL> &, const tf::TransformListener &);
 
 template bool pcl_ros::transformPointCloud<mcl_3dl::PointXYZIL>(
-    const std::string&,
-    const pcl::PointCloud<mcl_3dl::PointXYZIL>&,
-    pcl::PointCloud<mcl_3dl::PointXYZIL>&,
-    const tf::TransformListener&);
+  const std::string &, const pcl::PointCloud<mcl_3dl::PointXYZIL> &,
+  pcl::PointCloud<mcl_3dl::PointXYZIL> &, const tf::TransformListener &);
 #endif  // IS_ROS1_BUILD

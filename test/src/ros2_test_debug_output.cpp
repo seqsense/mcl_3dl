@@ -27,56 +27,44 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <nav_msgs/msg/odometry.hpp>
-#include <sensor_msgs/msg/imu.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <gtest/gtest.h>
 
 #include <random>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "tf2/utils.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 namespace
 {
 void generateSamplePointcloud2(
-    sensor_msgs::msg::PointCloud2& cloud,
-    const float offset_x,
-    const float offset_y,
-    const float offset_z)
+  sensor_msgs::msg::PointCloud2 & cloud, const float offset_x, const float offset_y,
+  const float offset_z)
 {
   cloud.height = 1;
   cloud.is_bigendian = false;
   cloud.is_dense = false;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-      4,
-      "x", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "y", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "z", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "intensity", 1, sensor_msgs::msg::PointField::FLOAT32);
+    4, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "z", 1, sensor_msgs::msg::PointField::FLOAT32, "intensity", 1,
+    sensor_msgs::msg::PointField::FLOAT32);
 
   class Point
   {
   public:
     float x_, y_, z_;
-    Point(const float x, const float y, const float z)
-      : x_(x)
-      , y_(y)
-      , z_(z)
-    {
-    }
+    Point(const float x, const float y, const float z) : x_(x), y_(y), z_(z) {}
   };
   std::vector<Point> points;
   // Draw cube
-  for (float x = -1; x < 1; x += 0.05)
-  {
-    for (float y = -1; y < 1; y += 0.05)
-    {
+  for (float x = -1; x < 1; x += 0.05) {
+    for (float y = -1; y < 1; y += 0.05) {
       points.push_back(Point(1.0 / 2 + offset_x, y + offset_y, x + offset_z));
       points.push_back(Point(-1.0 / 2 + offset_x, y + offset_y, x + offset_z));
     }
@@ -88,8 +76,7 @@ void generateSamplePointcloud2(
   sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
 
-  for (const Point& p : points)
-  {
+  for (const Point & p : points) {
     *iter_x = p.x_;
     *iter_y = p.y_;
     *iter_z = p.z_;
@@ -100,10 +87,8 @@ void generateSamplePointcloud2(
 }
 
 sensor_msgs::msg::PointCloud2 generateMapMsg(
-    rclcpp::Node::SharedPtr /*node*/,
-    const float offset_x,
-    const float offset_y,
-    const float offset_z)
+  rclcpp::Node::SharedPtr /*node*/, const float offset_x, const float offset_y,
+  const float offset_z)
 {
   sensor_msgs::msg::PointCloud2 cloud;
   generateSamplePointcloud2(cloud, offset_x, offset_y, offset_z);
@@ -145,20 +130,14 @@ TEST(DebugOutput, MatchedUnmatched)
   sensor_msgs::msg::PointCloud2::ConstSharedPtr matched, unmatched;
 
   auto sub_matched = node->create_subscription<sensor_msgs::msg::PointCloud2>(
-      "mcl_3dl/matched", 1,
-      [&matched](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
-      {
-        matched = msg;
-      });
+    "mcl_3dl/matched", 1,
+    [&matched](const sensor_msgs::msg::PointCloud2::ConstSharedPtr & msg) { matched = msg; });
   auto sub_unmatched = node->create_subscription<sensor_msgs::msg::PointCloud2>(
-      "mcl_3dl/unmatched", 1,
-      [&unmatched](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg)
-      {
-        unmatched = msg;
-      });
+    "mcl_3dl/unmatched", 1,
+    [&unmatched](const sensor_msgs::msg::PointCloud2::ConstSharedPtr & msg) { unmatched = msg; });
 
   auto pub_mapcloud = node->create_publisher<sensor_msgs::msg::PointCloud2>(
-      "mapcloud", rclcpp::QoS(1).transient_local());
+    "mapcloud", rclcpp::QoS(1).transient_local());
   auto pub_cloud = node->create_publisher<sensor_msgs::msg::PointCloud2>("cloud", 1);
   auto pub_imu = node->create_publisher<sensor_msgs::msg::Imu>("imu/data", 1);
   auto pub_odom = node->create_publisher<nav_msgs::msg::Odometry>("odom", 1);
@@ -171,15 +150,12 @@ TEST(DebugOutput, MatchedUnmatched)
   // Wait for DDS discovery and map processing
   rclcpp::sleep_for(std::chrono::seconds(2));
   rclcpp::WallRate rate(10);
-  for (int i = 0; i < 80; ++i)
-  {
+  for (int i = 0; i < 80; ++i) {
     rate.sleep();
     rclcpp::spin_some(node);
-    if (matched && unmatched)
-      break;
+    if (matched && unmatched) break;
     // Re-publish map periodically to handle late subscriber discovery
-    if (i % 10 == 0)
-      pub_mapcloud->publish(map_msg);
+    if (i % 10 == 0) pub_mapcloud->publish(map_msg);
     pub_cloud->publish(generateCloudMsg(node));
     pub_imu->publish(generateImuMsg(node));
     pub_odom->publish(generateOdomMsg(node));
@@ -196,8 +172,7 @@ TEST(DebugOutput, MatchedUnmatched)
     sensor_msgs::PointCloud2ConstIterator<float> x(*matched, "x");
     sensor_msgs::PointCloud2ConstIterator<float> y(*matched, "y");
     sensor_msgs::PointCloud2ConstIterator<float> z(*matched, "z");
-    for (; x != x.end(); ++x, ++y, ++z)
-    {
+    for (; x != x.end(); ++x, ++y, ++z) {
       ASSERT_NEAR(*x, 0.5f, 0.1f);
       ASSERT_TRUE(-1.1 < *y && *y < 1.1);
       ASSERT_TRUE(-1.1 < *z && *z < 1.1);
@@ -207,8 +182,7 @@ TEST(DebugOutput, MatchedUnmatched)
     sensor_msgs::PointCloud2ConstIterator<float> x(*unmatched, "x");
     sensor_msgs::PointCloud2ConstIterator<float> y(*unmatched, "y");
     sensor_msgs::PointCloud2ConstIterator<float> z(*unmatched, "z");
-    for (; x != x.end(); ++x, ++y, ++z)
-    {
+    for (; x != x.end(); ++x, ++y, ++z) {
       ASSERT_NEAR(*x, -0.5f, 0.1f);
       ASSERT_TRUE(-1.1 < *y && *y < 1.1);
       ASSERT_TRUE(-1.1 < *z && *z < 1.1);
@@ -216,7 +190,7 @@ TEST(DebugOutput, MatchedUnmatched)
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   rclcpp::init(argc, argv);

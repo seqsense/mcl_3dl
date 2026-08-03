@@ -27,55 +27,47 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <geometry_msgs/msg/pose_array.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <mcl_3dl_msgs/msg/status.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <sensor_msgs/msg/imu.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sensor_msgs/point_cloud2_iterator.hpp>
-#include <std_srvs/srv/trigger.hpp>
-#include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <gtest/gtest.h>
 
 #include <random>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "mcl_3dl_msgs/msg/status.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "std_srvs/srv/trigger.hpp"
+#include "tf2/utils.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 
 namespace
 {
 void generateSamplePointcloud2(
-    sensor_msgs::msg::PointCloud2& cloud,
-    const float offset_x,
-    const float offset_y,
-    const float offset_z)
+  sensor_msgs::msg::PointCloud2 & cloud, const float offset_x, const float offset_y,
+  const float offset_z)
 {
   cloud.height = 1;
   cloud.is_bigendian = false;
   cloud.is_dense = false;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-      4,
-      "x", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "y", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "z", 1, sensor_msgs::msg::PointField::FLOAT32,
-      "intensity", 1, sensor_msgs::msg::PointField::FLOAT32);
+    4, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
+    "z", 1, sensor_msgs::msg::PointField::FLOAT32, "intensity", 1,
+    sensor_msgs::msg::PointField::FLOAT32);
 
   class Point
   {
   public:
     float x_, y_, z_;
-    Point(const float x, const float y, const float z)
-      : x_(x), y_(y), z_(z) {}
+    Point(const float x, const float y, const float z) : x_(x), y_(y), z_(z) {}
   };
   std::vector<Point> points;
-  for (float x = -1; x < 1; x += 0.05)
-  {
-    for (float y = -1; y < 1; y += 0.05)
-    {
+  for (float x = -1; x < 1; x += 0.05) {
+    for (float y = -1; y < 1; y += 0.05) {
       points.push_back(Point(x / 2 + offset_x, y + offset_y, 1.0 + offset_z));
       points.push_back(Point(x / 2 + offset_x, y + offset_y, -1.0 + offset_z));
       points.push_back(Point(1.0 / 2 + offset_x, y + offset_y, x + offset_z));
@@ -91,8 +83,7 @@ void generateSamplePointcloud2(
   sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
 
-  for (const Point& p : points)
-  {
+  for (const Point & p : points) {
     *iter_x = p.x_;
     *iter_y = p.y_;
     *iter_z = p.z_;
@@ -103,7 +94,7 @@ void generateSamplePointcloud2(
 }
 
 sensor_msgs::msg::PointCloud2 generateMapMsg(
-    const float offset_x, const float offset_y, const float offset_z)
+  const float offset_x, const float offset_y, const float offset_z)
 {
   sensor_msgs::msg::PointCloud2 cloud;
   generateSamplePointcloud2(cloud, offset_x, offset_y, offset_z);
@@ -170,20 +161,17 @@ protected:
   geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose_cov_;
   mcl_3dl_msgs::msg::Status::ConstSharedPtr status_;
 
-  bool findTruePose(const tf2::Transform& true_pose)
+  bool findTruePose(const tf2::Transform & true_pose)
   {
-    if (!poses_)
-      return false;
+    if (!poses_) return false;
 
     bool found_true_positive(false);
-    for (const auto& pose : poses_->poses)
-    {
+    for (const auto & pose : poses_->poses) {
       tf2::Transform particle_pose;
       tf2::fromMsg(pose, particle_pose);
 
       const tf2::Transform tf_diff = particle_pose.inverse() * true_pose;
-      if (tf_diff.getOrigin().length() < 2e-1 &&
-          fabs(tf2::getYaw(tf_diff.getRotation())) < 2e-1)
+      if (tf_diff.getOrigin().length() < 2e-1 && fabs(tf2::getYaw(tf_diff.getRotation())) < 2e-1)
         found_true_positive = true;
     }
     return found_true_positive;
@@ -194,39 +182,37 @@ protected:
     node_ = rclcpp::Node::make_shared("test_expansion_resetting");
 
     sub_pose_ = node_->create_subscription<geometry_msgs::msg::PoseArray>(
-        "mcl_3dl/particles", 1,
-        [this](const geometry_msgs::msg::PoseArray::ConstSharedPtr& msg) { poses_ = msg; });
+      "mcl_3dl/particles", 1,
+      [this](const geometry_msgs::msg::PoseArray::ConstSharedPtr & msg) { poses_ = msg; });
     sub_status_ = node_->create_subscription<mcl_3dl_msgs::msg::Status>(
-        "mcl_3dl/status", 1,
-        [this](const mcl_3dl_msgs::msg::Status::ConstSharedPtr& msg) { status_ = msg; });
+      "mcl_3dl/status", 1,
+      [this](const mcl_3dl_msgs::msg::Status::ConstSharedPtr & msg) { status_ = msg; });
     sub_pose_cov_ = node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-        "amcl_pose", 1,
-        [this](const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr& msg)
-        { pose_cov_ = msg; });
+      "amcl_pose", 1,
+      [this](const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr & msg) {
+        pose_cov_ = msg;
+      });
 
     pub_mapcloud_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>(
-        "mapcloud", rclcpp::QoS(1).transient_local());
+      "mapcloud", rclcpp::QoS(1).transient_local());
     pub_cloud_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>("cloud", 1);
     pub_imu_ = node_->create_publisher<sensor_msgs::msg::Imu>("imu/data", 1);
     pub_odom_ = node_->create_publisher<nav_msgs::msg::Odometry>("odom", 1);
     pub_init_ = node_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
-        "initialpose", rclcpp::QoS(1).transient_local());
+      "initialpose", rclcpp::QoS(1).transient_local());
 
     src_expansion_resetting_ =
-        node_->create_client<std_srvs::srv::Trigger>("mcl_3dl/expansion_resetting");
+      node_->create_client<std_srvs::srv::Trigger>("mcl_3dl/expansion_resetting");
 
     ASSERT_TRUE(src_expansion_resetting_->wait_for_service(std::chrono::seconds(10)));
 
     pub_init_->publish(generateInitialPose(node_));
     rclcpp::WallRate wait(10);
-    for (int i = 0; i < 100; i++)
-    {
+    for (int i = 0; i < 100; i++) {
       wait.sleep();
       rclcpp::spin_some(node_);
-      if (pose_cov_)
-        break;
-      if (!rclcpp::ok())
-        break;
+      if (pose_cov_) break;
+      if (!rclcpp::ok()) break;
     }
   }
 };
@@ -242,14 +228,11 @@ TEST_F(ExpansionResetting, ExpandAndResume)
   rclcpp::sleep_for(std::chrono::seconds(2));
   rclcpp::WallRate rate(10);
   // Wait until finishing expansion resetting
-  for (int i = 0; i < 40; ++i)
-  {
+  for (int i = 0; i < 40; ++i) {
     rate.sleep();
     rclcpp::spin_some(node_);
-    if (status_ && status_->status == mcl_3dl_msgs::msg::Status::EXPANSION_RESETTING)
-      i = 0;
-    if (i % 10 == 0)
-      pub_mapcloud_->publish(map_msg);
+    if (status_ && status_->status == mcl_3dl_msgs::msg::Status::EXPANSION_RESETTING) i = 0;
+    if (i % 10 == 0) pub_mapcloud_->publish(map_msg);
     pub_cloud_->publish(generateCloudMsg(node_));
     pub_imu_->publish(generateImuMsg(node_));
     pub_odom_->publish(generateOdomMsg(node_));
@@ -259,10 +242,8 @@ TEST_F(ExpansionResetting, ExpandAndResume)
   ASSERT_TRUE(static_cast<bool>(status_));
   ASSERT_TRUE(static_cast<bool>(poses_));
 
-  ASSERT_TRUE(
-      findTruePose(tf2::Transform(
-          tf2::Quaternion(0, 0, 0, 1),
-          tf2::Vector3(offset_x, offset_y, offset_z))));
+  ASSERT_TRUE(findTruePose(
+    tf2::Transform(tf2::Quaternion(0, 0, 0, 1), tf2::Vector3(offset_x, offset_y, offset_z))));
 }
 
 TEST_F(ExpansionResetting, ManualExpand)
@@ -277,15 +258,13 @@ TEST_F(ExpansionResetting, ManualExpand)
   rclcpp::WallRate rate(10);
 
   // Ensure that the node is not in expansion resetting mode
-  for (int i = 0; i < 40; ++i)
-  {
+  for (int i = 0; i < 40; ++i) {
     rate.sleep();
     rclcpp::spin_some(node_);
     if (i > 5 && status_ && status_->status != mcl_3dl_msgs::msg::Status::EXPANSION_RESETTING)
       break;
 
-    if (i % 10 == 0)
-      pub_mapcloud_->publish(map_msg);
+    if (i % 10 == 0) pub_mapcloud_->publish(map_msg);
     pub_cloud_->publish(generateCloudMsg(node_));
     pub_imu_->publish(generateImuMsg(node_));
     pub_odom_->publish(generateOdomMsg(node_));
@@ -301,12 +280,10 @@ TEST_F(ExpansionResetting, ManualExpand)
   rclcpp::sleep_for(std::chrono::milliseconds(200));
 
   // Wait until finishing expansion resetting
-  for (int i = 0; i < 40; ++i)
-  {
+  for (int i = 0; i < 40; ++i) {
     rate.sleep();
     rclcpp::spin_some(node_);
-    if (status_)
-    {
+    if (status_) {
       ASSERT_NE(status_->status, mcl_3dl_msgs::msg::Status::EXPANSION_RESETTING);
     }
     pub_cloud_->publish(generateCloudMsg(node_));
@@ -318,13 +295,11 @@ TEST_F(ExpansionResetting, ManualExpand)
   ASSERT_TRUE(static_cast<bool>(status_));
   ASSERT_TRUE(static_cast<bool>(poses_));
 
-  ASSERT_TRUE(
-      findTruePose(tf2::Transform(
-          tf2::Quaternion(0, 0, 0, 1),
-          tf2::Vector3(offset_x, offset_y, offset_z))));
+  ASSERT_TRUE(findTruePose(
+    tf2::Transform(tf2::Quaternion(0, 0, 0, 1), tf2::Vector3(offset_x, offset_y, offset_z))));
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   rclcpp::init(argc, argv);
