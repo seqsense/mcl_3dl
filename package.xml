@@ -55,6 +55,10 @@
   <test_depend condition="$ROS_VERSION == 2">yaml-cpp</test_depend>
 
   <export>
+    <!-- catkin_make_isolated (used by ros-abuild) does not evaluate the
+         condition attribute and simply reads the first build_type export, so
+         the ROS 1 entry must be present and listed first. -->
+    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
     <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
   </export>
 </package>
