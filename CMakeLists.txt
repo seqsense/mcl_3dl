@@ -278,6 +278,22 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     # --- launch_testing integration tests ---
     find_package(launch_testing_ament_cmake REQUIRED)
 
+    # Every launch test brings up its own mcl_3dl node, and ctest may run them
+    # concurrently -- under Alpine ROS CI check() invokes "make test", so ctest
+    # joins the make jobserver and starts as many tests as there are build jobs.
+    # On a shared DDS domain the nodes of different tests discover each other,
+    # and a test then reads another test's parameters and point clouds. Give
+    # each launch test a private domain, and keep discovery off the network so a
+    # ROS 2 system running elsewhere on the host or LAN cannot join either.
+    set(_launch_test_domain 71)
+    macro(mcl_3dl_add_launch_test path)
+      add_launch_test(${path} ${ARGN}
+        ENV
+          "ROS_DOMAIN_ID=${_launch_test_domain}"
+          "ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST")
+      math(EXPR _launch_test_domain "${_launch_test_domain} + 1")
+    endmacro()
+
     # beam_likelihood (pure gtest, no node interaction needed)
     ament_add_gtest_executable(ros2_test_beam_likelihood
       test/src/ros2_test_beam_likelihood.cpp
@@ -290,7 +306,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     target_link_libraries(ros2_test_beam_likelihood ${PCL_LIBRARIES})
     target_compile_options(ros2_test_beam_likelihood PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_beam_likelihood DESTINATION lib/${PROJECT_NAME})
-    add_launch_test(test/tests/test_beam_likelihood_launch.py TIMEOUT 60)
+    mcl_3dl_add_launch_test(test/tests/test_beam_likelihood_launch.py TIMEOUT 60)
 
     # debug_output
     ament_add_gtest_executable(ros2_test_debug_output test/src/ros2_test_debug_output.cpp)
@@ -299,7 +315,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
       rclcpp nav_msgs sensor_msgs tf2 tf2_geometry_msgs)
     target_compile_options(ros2_test_debug_output PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_debug_output DESTINATION lib/${PROJECT_NAME})
-    add_launch_test(test/tests/test_debug_output_launch.py TIMEOUT 60)
+    mcl_3dl_add_launch_test(test/tests/test_debug_output_launch.py TIMEOUT 60)
 
     # expansion_resetting
     ament_add_gtest_executable(ros2_test_expansion_resetting test/src/ros2_test_expansion_resetting.cpp)
@@ -308,7 +324,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
       rclcpp geometry_msgs mcl_3dl_msgs nav_msgs sensor_msgs std_srvs tf2 tf2_geometry_msgs)
     target_compile_options(ros2_test_expansion_resetting PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_expansion_resetting DESTINATION lib/${PROJECT_NAME})
-    add_launch_test(test/tests/test_expansion_resetting_launch.py TIMEOUT 90)
+    mcl_3dl_add_launch_test(test/tests/test_expansion_resetting_launch.py TIMEOUT 90)
 
     # beam_label
     ament_add_gtest_executable(ros2_test_beam_label test/src/ros2_test_beam_label.cpp)
@@ -318,7 +334,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
       rclcpp geometry_msgs nav_msgs sensor_msgs tf2 tf2_geometry_msgs)
     target_compile_options(ros2_test_beam_label PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_beam_label DESTINATION lib/${PROJECT_NAME})
-    add_launch_test(test/tests/test_beam_label_launch.py TIMEOUT 60)
+    mcl_3dl_add_launch_test(test/tests/test_beam_label_launch.py TIMEOUT 60)
 
     # landmark
     ament_add_gtest_executable(ros2_test_landmark test/src/ros2_test_landmark.cpp)
@@ -327,7 +343,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
       rclcpp geometry_msgs)
     target_compile_options(ros2_test_landmark PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_landmark DESTINATION lib/${PROJECT_NAME})
-    add_launch_test(test/tests/test_landmark_launch.py TIMEOUT 90)
+    mcl_3dl_add_launch_test(test/tests/test_landmark_launch.py TIMEOUT 90)
 
     # transform_failure
     ament_add_gtest_executable(ros2_test_transform_failure test/src/ros2_test_transform_failure.cpp)
@@ -336,7 +352,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
       rclcpp geometry_msgs sensor_msgs tf2 tf2_geometry_msgs tf2_ros)
     target_compile_options(ros2_test_transform_failure PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_transform_failure DESTINATION lib/${PROJECT_NAME})
-    add_launch_test(test/tests/test_transform_failure_launch.py TIMEOUT 60)
+    mcl_3dl_add_launch_test(test/tests/test_transform_failure_launch.py TIMEOUT 60)
 
     # global_localization
     ament_add_gtest_executable(ros2_test_global_localization test/src/ros2_test_global_localization.cpp)
@@ -345,7 +361,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
       rclcpp geometry_msgs mcl_3dl_msgs nav_msgs sensor_msgs std_srvs tf2 tf2_geometry_msgs)
     target_compile_options(ros2_test_global_localization PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_global_localization DESTINATION lib/${PROJECT_NAME})
-    add_launch_test(test/tests/test_global_localization_launch.py TIMEOUT 180)
+    mcl_3dl_add_launch_test(test/tests/test_global_localization_launch.py TIMEOUT 180)
 
     # parameters
     ament_add_gtest_executable(ros2_test_parameters test/src/ros2_test_parameters.cpp)
@@ -353,7 +369,7 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     ament_target_dependencies(ros2_test_parameters rclcpp rcl_interfaces)
     target_compile_options(ros2_test_parameters PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
     install(TARGETS ros2_test_parameters DESTINATION lib/${PROJECT_NAME})
-    add_launch_test(test/tests/test_parameters_launch.py TIMEOUT 30)
+    mcl_3dl_add_launch_test(test/tests/test_parameters_launch.py TIMEOUT 30)
 
     # ----- Heavy bag-replay tests (gated by MCL_3DL_EXTRA_TESTS) -----
     # ROS 2 port of localization_rostest.test.in / tf_rostest.test.in.
@@ -392,8 +408,8 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
                 DESTINATION share/${PROJECT_NAME}/test_data)
         install(FILES test/data/short_test_ref.topic
                 DESTINATION share/${PROJECT_NAME}/test_data)
-        add_launch_test(test/tests/test_localization_launch.py TIMEOUT 420)
-        add_launch_test(test/tests/test_tf_launch.py TIMEOUT 150)
+        mcl_3dl_add_launch_test(test/tests/test_localization_launch.py TIMEOUT 420)
+        mcl_3dl_add_launch_test(test/tests/test_tf_launch.py TIMEOUT 150)
       else()
         message(WARNING
           "MCL_3DL_EXTRA_TESTS is ON but test/data/short_test3 or "
