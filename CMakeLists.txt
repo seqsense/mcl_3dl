@@ -180,6 +180,13 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     # reserved." line, so ament_copyright reports license=<unknown> for every
     # file. The linter is excluded rather than rewriting the license text.
     list(APPEND AMENT_LINT_AUTO_EXCLUDE ament_cmake_copyright)
+    # clang-format ships a different bundled .clang-format per distro, so the
+    # same source cannot satisfy every distro's formatter. Formatting is a
+    # style-only check: run it on jazzy (the source of truth) and skip it on
+    # humble, as sq_ros1_rclcpp_compat does.
+    if("$ENV{ROS_DISTRO}" STREQUAL "humble")
+      list(APPEND AMENT_LINT_AUTO_EXCLUDE ament_cmake_clang_format)
+    endif()
     ament_lint_auto_find_test_dependencies()
 
     find_package(ament_cmake_gtest REQUIRED)

@@ -19,6 +19,8 @@ jobs:
         include:
           - alpine-version: "3.23"
             ros-distro: jazzy
+          - alpine-version: "3.23"
+            ros-distro: humble
     uses: alpine-ros/alpine-ros-ci-workflows/.github/workflows/ros2.yaml@main
     with:
       alpine-version: ${{ matrix.alpine-version }}
