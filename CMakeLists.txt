@@ -135,6 +135,17 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
 
   add_definitions(-DPCL_NO_PRECOMPILE)
 
+  if("$ENV{ROS_DISTRO}" STREQUAL "humble" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+      AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15)
+    # GCC 15 segfaults (ICE in the strlen pass' printf handling) while
+    # instantiating humble's rclcpp/service.hpp with coverage instrumentation.
+    # Skip that printf analysis entirely; it only powers the
+    # -Wformat-overflow/-Wformat-truncation diagnostics and the sprintf
+    # return-value optimization.
+    add_compile_options(
+      -fno-printf-return-value -Wno-format-overflow -Wno-format-truncation)
+  endif()
+
   ament_auto_add_library(mcl_3dl_engine SHARED
     src/cloud_accum.cpp
     src/lidar_measurement_model_beam.cpp
