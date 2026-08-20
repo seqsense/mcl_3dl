@@ -26,9 +26,10 @@ jobs:
       alpine-version: ${{ matrix.alpine-version }}
       ros-distro: ${{ matrix.ros-distro }}
       enable-bot-comment: true
-      # sq_ros1_rclcpp_compat is a ROS 1-only dependency, so the ROS 2 build
-      # takes mcl_3dl_msgs alone.
-      rosinstall-files: ros2.rosinstall
+      # Shared with the ROS 1 job. sq_ros1_rclcpp_compat is a ROS 1-only
+      # dependency: it gets checked out, but manifest-files below keeps it
+      # out of the build.
+      rosinstall-files: .rosinstall
       manifest-files: |
         package.xml
         ../../home/builder/extsrc/mcl_3dl_msgs/package.xml

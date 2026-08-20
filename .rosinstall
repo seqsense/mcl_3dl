@@ -1,11 +1,12 @@
-# ROS 1 dependencies not available from the Alpine ROS package repository.
+# Source dependencies not available from the Alpine ROS package repository,
+# shared by the ROS 1 and ROS 2 CI jobs.
 #
 # mcl_3dl_msgs is released, but only in its pre-hybrid form, which does not
 # emit the ROS 2-style headers this package includes; sq_ros1_rclcpp_compat is
 # not released at all. Both are therefore built from source here.
 #
-# The ROS 2 job uses ros2.rosinstall instead: sq_ros1_rclcpp_compat is guarded
-# by $ROS_VERSION == 1 and must not be checked out for it.
+# sq_ros1_rclcpp_compat is ROS 1-only, so the ROS 2 job leaves it out of its
+# manifest-files: it is checked out but never built there.
 - git:
     local-name: sq_ros1_rclcpp_compat
     uri: https://github.com/seqsense/sq_ros1_rclcpp_compat.git
