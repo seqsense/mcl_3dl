@@ -1,0 +1,34 @@
+name: ros2 ci
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  packages: read
+  issues: write         # hiding bot comments
+  pull-requests: write  # hiding bot comments
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - alpine-version: "3.23"
+            ros-distro: jazzy
+    uses: alpine-ros/alpine-ros-ci-workflows/.github/workflows/ros2.yaml@main
+    with:
+      alpine-version: ${{ matrix.alpine-version }}
+      ros-distro: ${{ matrix.ros-distro }}
+      enable-bot-comment: true
+      # sq_ros1_rclcpp_compat is a ROS 1-only dependency, so the ROS 2 build
+      # takes mcl_3dl_msgs alone.
+      rosinstall-files: ros2.rosinstall
+      manifest-files: |
+        package.xml
+        ../../home/builder/extsrc/mcl_3dl_msgs/package.xml
+    secrets:
+      bot-comment-token: ${{ secrets.GITHUB_TOKEN }}

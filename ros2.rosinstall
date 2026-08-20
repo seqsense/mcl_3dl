@@ -1,0 +1,9 @@
+# ROS 2 counterpart of .rosinstall.
+#
+# mcl_3dl_msgs is not in the Alpine ROS 2 package repository, so it is built
+# from source. sq_ros1_rclcpp_compat is deliberately absent: this package
+# depends on it only under $ROS_VERSION == 1.
+- git:
+    local-name: mcl_3dl_msgs
+    uri: https://github.com/seqsense/mcl_3dl_msgs.git
+    version: master
