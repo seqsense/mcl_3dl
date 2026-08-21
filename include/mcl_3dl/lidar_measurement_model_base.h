@@ -27,22 +27,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_LIDAR_MEASUREMENT_MODEL_BASE_H
-#define MCL_3DL_LIDAR_MEASUREMENT_MODEL_BASE_H
+#ifndef MCL_3DL__LIDAR_MEASUREMENT_MODEL_BASE_H_
+#define MCL_3DL__LIDAR_MEASUREMENT_MODEL_BASE_H_
 
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <pcl/point_types.h>
-#include <pcl_ros/point_cloud.h>
-
-#include <mcl_3dl/chunked_kdtree.h>
-#include <mcl_3dl/point_cloud_random_sampler.h>
-#include <mcl_3dl/point_types.h>
-#include <mcl_3dl/state_6dof.h>
-#include <mcl_3dl/vec3.h>
+#include "mcl_3dl/chunked_kdtree.h"
+#include "mcl_3dl/point_cloud_random_sampler.h"
+#include "mcl_3dl/point_types.h"
+#include "mcl_3dl/state_6dof.h"
+#include "mcl_3dl/vec3.h"
+#include "pcl/point_types.h"
+#include "pcl_conversions/pcl_conversions.h"
 
 namespace mcl_3dl
 {
@@ -52,8 +51,7 @@ struct LidarMeasurementResult
   float quality;
 
   LidarMeasurementResult(const float likelihood_value, const float quality_value)
-    : likelihood(likelihood_value)
-    , quality(quality_value)
+  : likelihood(likelihood_value), quality(quality_value)
   {
   }
 };
@@ -64,24 +62,19 @@ public:
   using Ptr = std::shared_ptr<LidarMeasurementModelBase>;
   using PointType = mcl_3dl::PointXYZIL;
 
-  LidarMeasurementModelBase()
-  {
-  }
+  LidarMeasurementModelBase() {}
 
   virtual void refreshParameters() = 0;
-  virtual void setGlobalLocalizationStatus(
-      const size_t, const size_t) = 0;
+  virtual void setGlobalLocalizationStatus(const size_t, const size_t) = 0;
   virtual float getMaxSearchRange() const = 0;
   virtual pcl::PointCloud<PointType>::Ptr filter(
-      const pcl::PointCloud<PointType>::ConstPtr&,
-      const PointCloudRandomSampler<PointType>&) const = 0;
+    const pcl::PointCloud<PointType>::ConstPtr &,
+    const PointCloudRandomSampler<PointType> &) const = 0;
 
   virtual LidarMeasurementResult measure(
-      ChunkedKdtree<PointType>::Ptr&,
-      const pcl::PointCloud<PointType>::ConstPtr&,
-      const std::vector<Vec3>&,
-      const State6DOF&) const = 0;
+    ChunkedKdtree<PointType>::Ptr &, const pcl::PointCloud<PointType>::ConstPtr &,
+    const std::vector<Vec3> &, const State6DOF &) const = 0;
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_LIDAR_MEASUREMENT_MODEL_BASE_H
+#endif  // MCL_3DL__LIDAR_MEASUREMENT_MODEL_BASE_H_

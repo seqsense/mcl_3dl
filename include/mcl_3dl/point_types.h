@@ -27,13 +27,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_POINT_TYPES_H
-#define MCL_3DL_POINT_TYPES_H
+#ifndef MCL_3DL__POINT_TYPES_H_
+#define MCL_3DL__POINT_TYPES_H_
 
 #include <cstdint>
 
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
 
 namespace mcl_3dl
 {
@@ -56,11 +56,10 @@ struct EIGEN_ALIGN16 PointXYZIL
 }  // namespace mcl_3dl
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(
-    mcl_3dl::PointXYZIL,
-    (float, x, x)                  //
-    (float, y, y)                  //
-    (float, z, z)                  //
-    (float, intensity, intensity)  //
-    (std::uint32_t, label, label))
+  mcl_3dl::PointXYZIL, (float, x, x)  //
+  (float, y, y)                       //
+  (float, z, z)                       //
+  (float, intensity, intensity)       //
+  (std::uint32_t, label, label))
 
-#endif  // MCL_3DL_POINT_TYPES_H
+#endif  // MCL_3DL__POINT_TYPES_H_

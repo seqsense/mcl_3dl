@@ -27,19 +27,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <cstddef>
 
-#include <Eigen/Geometry>
-
-#include <gtest/gtest.h>
-
-#include <mcl_3dl/nd.h>
+#include "Eigen/Geometry"
+#include "mcl_3dl/nd.h"
 
 TEST(NormalLiklihood, Normality)
 {
-  for (double sigma = 1.0; sigma <= 3.0; sigma += 1.0)
-  {
+  for (double sigma = 1.0; sigma <= 3.0; sigma += 1.0) {
     // Check distribution
     mcl_3dl::NormalLikelihood<double> nl(sigma);
     const double likelihood0 = 1.0 / std::sqrt(M_PI * 2.0 * sigma * sigma);
@@ -52,8 +50,7 @@ TEST(NormalLiklihood, Normality)
     // Check integrated value
     double sum(0.0);
     const double step = 0.1;
-    for (double i = -100.0; i < 100.0; i += step)
-    {
+    for (double i = -100.0; i < 100.0; i += step) {
       sum += nl(i) * step;
     }
     ASSERT_NEAR(sum, 1.0, 1e-6);
@@ -62,105 +59,73 @@ TEST(NormalLiklihood, Normality)
 
 TEST(NormalLiklihood, NormalityNd)
 {
-  for (double sigma = 1.0; sigma <= 3.0; sigma += 1.0)
-  {
+  for (double sigma = 1.0; sigma <= 3.0; sigma += 1.0) {
     // Check distribution
     using NormalLikelihood2d = mcl_3dl::NormalLikelihoodNd<double, 2>;
     NormalLikelihood2d::Matrix cov;
-    cov << sigma, 0,
-        0, sigma * 2;
+    cov << sigma, 0, 0, sigma * 2;
     NormalLikelihood2d nl(cov);
 
     const double likelihood0 = 1.0 / (M_PI * 2.0 * sqrt(cov.determinant()));
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(0.0, 0.0)), likelihood0, 1e-6);
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(0.0, 0.0)), likelihood0, 1e-6);
 
-    const double e1a =
-        exp(-0.5 *
-            NormalLikelihood2d::Vector(sigma, 0.0).transpose() *
-            cov.inverse() *
-            NormalLikelihood2d::Vector(sigma, 0.0));
-    const double e1b =
-        exp(-0.5 *
-            NormalLikelihood2d::Vector(0.0, sigma).transpose() *
-            cov.inverse() *
-            NormalLikelihood2d::Vector(0.0, sigma));
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(sigma, 0.0)), likelihood0 * e1a, 1e-6);
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(-sigma, 0.0)), likelihood0 * e1a, 1e-6);
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(0.0, sigma)), likelihood0 * e1b, 1e-6);
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(0.0, -sigma)), likelihood0 * e1b, 1e-6);
+    const double e1a = exp(
+      -0.5 * NormalLikelihood2d::Vector(sigma, 0.0).transpose() * cov.inverse() *
+      NormalLikelihood2d::Vector(sigma, 0.0));
+    const double e1b = exp(
+      -0.5 * NormalLikelihood2d::Vector(0.0, sigma).transpose() * cov.inverse() *
+      NormalLikelihood2d::Vector(0.0, sigma));
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(sigma, 0.0)), likelihood0 * e1a, 1e-6);
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(-sigma, 0.0)), likelihood0 * e1a, 1e-6);
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(0.0, sigma)), likelihood0 * e1b, 1e-6);
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(0.0, -sigma)), likelihood0 * e1b, 1e-6);
 
-    const double e2a =
-        exp(-0.5 *
-            NormalLikelihood2d::Vector(3.0 * sigma, 0.0).transpose() *
-            cov.inverse() *
-            NormalLikelihood2d::Vector(3.0 * sigma, 0.0));
-    const double e2b =
-        exp(-0.5 *
-            NormalLikelihood2d::Vector(0.0, 3.0 * sigma).transpose() *
-            cov.inverse() *
-            NormalLikelihood2d::Vector(0.0, 3.0 * sigma));
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(3.0 * sigma, 0.0)), likelihood0 * e2a, 1e-6);
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(-3.0 * sigma, 0.0)), likelihood0 * e2a, 1e-6);
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(0.0, 3.0 * sigma)), likelihood0 * e2b, 1e-6);
-    ASSERT_NEAR(
-        nl(NormalLikelihood2d::Vector(0.0, -3.0 * sigma)), likelihood0 * e2b, 1e-6);
+    const double e2a = exp(
+      -0.5 * NormalLikelihood2d::Vector(3.0 * sigma, 0.0).transpose() * cov.inverse() *
+      NormalLikelihood2d::Vector(3.0 * sigma, 0.0));
+    const double e2b = exp(
+      -0.5 * NormalLikelihood2d::Vector(0.0, 3.0 * sigma).transpose() * cov.inverse() *
+      NormalLikelihood2d::Vector(0.0, 3.0 * sigma));
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(3.0 * sigma, 0.0)), likelihood0 * e2a, 1e-6);
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(-3.0 * sigma, 0.0)), likelihood0 * e2a, 1e-6);
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(0.0, 3.0 * sigma)), likelihood0 * e2b, 1e-6);
+    ASSERT_NEAR(nl(NormalLikelihood2d::Vector(0.0, -3.0 * sigma)), likelihood0 * e2b, 1e-6);
 
     // Check integrated value
     double sum(0.0);
     const double step = 0.1;
     const double step_sq = step * step;
-    for (double i = -100.0; i < 100.0; i += step)
-    {
-      for (double j = -100.0; j < 100.0; j += step)
-      {
+    for (double i = -100.0; i < 100.0; i += step) {
+      for (double j = -100.0; j < 100.0; j += step) {
         sum += nl(NormalLikelihood2d::Vector(i, j)) * step_sq;
       }
     }
     ASSERT_NEAR(sum, 1.0, 1e-6);
   }
-  for (double sigma = 1.0; sigma <= 3.0; sigma += 1.0)
-  {
+  for (double sigma = 1.0; sigma <= 3.0; sigma += 1.0) {
     // Check distribution
     using NormalLikelihood2d = mcl_3dl::NormalLikelihoodNd<double, 2>;
     NormalLikelihood2d::Matrix cov;
-    cov << sigma, 0,
-        0, sigma;
+    cov << sigma, 0, 0, sigma;
     NormalLikelihood2d nl(cov);
 
     const double likelihood0 = 1.0 / (M_PI * 2.0 * sqrt(cov.determinant()));
-    const double e1 =
-        exp(-0.5 *
-            NormalLikelihood2d::Vector(sigma, 0.0).transpose() *
-            cov.inverse() *
-            NormalLikelihood2d::Vector(sigma, 0.0));
-    const double e2 =
-        exp(-0.5 *
-            NormalLikelihood2d::Vector(3.0 * sigma, 0.0).transpose() *
-            cov.inverse() *
-            NormalLikelihood2d::Vector(3.0 * sigma, 0.0));
-    for (double r = 0; r < M_PI * 2; r += M_PI / 6)
-    {
-      const auto v1 =
-          Eigen::Rotation2D<double>(r) *
-          NormalLikelihood2d::Vector(sigma, 0.0);
+    const double e1 = exp(
+      -0.5 * NormalLikelihood2d::Vector(sigma, 0.0).transpose() * cov.inverse() *
+      NormalLikelihood2d::Vector(sigma, 0.0));
+    const double e2 = exp(
+      -0.5 * NormalLikelihood2d::Vector(3.0 * sigma, 0.0).transpose() * cov.inverse() *
+      NormalLikelihood2d::Vector(3.0 * sigma, 0.0));
+    for (double r = 0; r < M_PI * 2; r += M_PI / 6) {
+      const auto v1 = Eigen::Rotation2D<double>(r) * NormalLikelihood2d::Vector(sigma, 0.0);
       ASSERT_NEAR(nl(v1), likelihood0 * e1, 1e-6);
-      const auto v2 =
-          Eigen::Rotation2D<double>(r) *
-          NormalLikelihood2d::Vector(3.0 * sigma, 0.0);
+      const auto v2 = Eigen::Rotation2D<double>(r) * NormalLikelihood2d::Vector(3.0 * sigma, 0.0);
       ASSERT_NEAR(nl(v2), likelihood0 * e2, 1e-6);
     }
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

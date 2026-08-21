@@ -27,12 +27,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_COMPAT_COMPATIBILITY_H
-#define MCL_3DL_COMPAT_COMPATIBILITY_H
+#ifndef MCL_3DL_COMPAT__COMPATIBILITY_H_
+#define MCL_3DL_COMPAT__COMPATIBILITY_H_
 
 #include <string>
 
-#include <ros/ros.h>
+#include "ros/ros.h"
 
 namespace mcl_3dl_compat
 {
@@ -61,160 +61,113 @@ inline int getCompat()
 }
 inline void checkCompatMode()
 {
-  if (getCompat() < supported_level)
-  {
-    const std::string message =
-        "======= [Obsolated] your configuration for " + ros::this_node::getName() + " is outdated =======";
+  if (getCompat() < supported_level) {
+    const std::string message = "======= [Obsolated] your configuration for " +
+                                ros::this_node::getName() + " is outdated =======";
     ROS_FATAL("%s", message.c_str());
     ros::shutdown();
     throw std::runtime_error(message);
-  }
-  else if (getCompat() > current_level)
-  {
-    const std::string message =
-        "======= [Unsupported] your configuration for " + ros::this_node::getName() + " is futuredated =======";
+  } else if (getCompat() > current_level) {
+    const std::string message = "======= [Unsupported] your configuration for " +
+                                ros::this_node::getName() + " is futuredated =======";
     ROS_FATAL("%s", message.c_str());
     ros::shutdown();
     throw std::runtime_error(message);
-  }
-  else if (getCompat() != current_level)
-  {
+  } else if (getCompat() != current_level) {
     ROS_ERROR_ONCE(
-        "======= [Deprecated] %s is run in compatible mode =======\n"
-        "=========================================================\n"
-        "Set _compatible:=%d to switch to new topic namespaces.\n"
-        "Compatible mode will be obsolated in the future update.\n"
-        "=========================================================",
-        ros::this_node::getName().c_str(), current_level);
+      "======= [Deprecated] %s is run in compatible mode =======\n"
+      "=========================================================\n"
+      "Set _compatible:=%d to switch to new topic namespaces.\n"
+      "Compatible mode will be obsolated in the future update.\n"
+      "=========================================================",
+      ros::this_node::getName().c_str(), current_level);
   }
 }
-inline std::string getSimplifiedNamespace(ros::NodeHandle& nh)
+inline std::string getSimplifiedNamespace(ros::NodeHandle & nh)
 {
-  if (nh.getUnresolvedNamespace() == ros::this_node::getName())
-    return std::string("~/");
-  if (nh.getUnresolvedNamespace() == std::string())
-    return std::string();
+  if (nh.getUnresolvedNamespace() == ros::this_node::getName()) return std::string("~/");
+  if (nh.getUnresolvedNamespace() == std::string()) return std::string();
   return nh.getNamespace() + "/";
 }
 template <class M, class T>
 ros::Subscriber subscribe(
-    ros::NodeHandle& nh_new,
-    const std::string& topic_new,
-    ros::NodeHandle& nh_old,
-    const std::string& topic_old,
-    uint32_t queue_size,
-    void (T::*fp)(M) const,
-    T* obj,
-    const ros::TransportHints& transport_hints = ros::TransportHints())
+  ros::NodeHandle & nh_new, const std::string & topic_new, ros::NodeHandle & nh_old,
+  const std::string & topic_old, uint32_t queue_size, void (T::*fp)(M) const, T * obj,
+  const ros::TransportHints & transport_hints = ros::TransportHints())
 {
-  if (getCompat() != current_level)
-  {
+  if (getCompat() != current_level) {
     ROS_ERROR(
-        "Use %s (%s%s) topic instead of %s (%s%s)",
-        nh_new.resolveName(topic_new, false).c_str(),
-        getSimplifiedNamespace(nh_new).c_str(), topic_new.c_str(),
-        nh_old.resolveName(topic_old, false).c_str(),
-        getSimplifiedNamespace(nh_old).c_str(), topic_old.c_str());
+      "Use %s (%s%s) topic instead of %s (%s%s)", nh_new.resolveName(topic_new, false).c_str(),
+      getSimplifiedNamespace(nh_new).c_str(), topic_new.c_str(),
+      nh_old.resolveName(topic_old, false).c_str(), getSimplifiedNamespace(nh_old).c_str(),
+      topic_old.c_str());
     return nh_old.subscribe(topic_old, queue_size, fp, obj, transport_hints);
-  }
-  else
-  {
+  } else {
     return nh_new.subscribe(topic_new, queue_size, fp, obj, transport_hints);
   }
 }
 template <class M, class T>
 ros::Subscriber subscribe(
-    ros::NodeHandle& nh_new,
-    const std::string& topic_new,
-    ros::NodeHandle& nh_old,
-    const std::string& topic_old,
-    uint32_t queue_size,
-    void (T::*fp)(M),
-    T* obj,
-    const ros::TransportHints& transport_hints = ros::TransportHints())
+  ros::NodeHandle & nh_new, const std::string & topic_new, ros::NodeHandle & nh_old,
+  const std::string & topic_old, uint32_t queue_size, void (T::*fp)(M), T * obj,
+  const ros::TransportHints & transport_hints = ros::TransportHints())
 {
-  if (getCompat() != current_level)
-  {
+  if (getCompat() != current_level) {
     ROS_ERROR(
-        "Use %s (%s%s) topic instead of %s (%s%s)",
-        nh_new.resolveName(topic_new, false).c_str(),
-        getSimplifiedNamespace(nh_new).c_str(), topic_new.c_str(),
-        nh_old.resolveName(topic_old, false).c_str(),
-        getSimplifiedNamespace(nh_old).c_str(), topic_old.c_str());
+      "Use %s (%s%s) topic instead of %s (%s%s)", nh_new.resolveName(topic_new, false).c_str(),
+      getSimplifiedNamespace(nh_new).c_str(), topic_new.c_str(),
+      nh_old.resolveName(topic_old, false).c_str(), getSimplifiedNamespace(nh_old).c_str(),
+      topic_old.c_str());
     return nh_old.subscribe(topic_old, queue_size, fp, obj, transport_hints);
-  }
-  else
-  {
+  } else {
     return nh_new.subscribe(topic_new, queue_size, fp, obj, transport_hints);
   }
 }
 template <class M>
 ros::Publisher advertise(
-    ros::NodeHandle& nh_new,
-    const std::string& topic_new,
-    ros::NodeHandle& nh_old,
-    const std::string& topic_old,
-    uint32_t queue_size,
-    bool latch = false)
+  ros::NodeHandle & nh_new, const std::string & topic_new, ros::NodeHandle & nh_old,
+  const std::string & topic_old, uint32_t queue_size, bool latch = false)
 {
-  if (getCompat() != current_level)
-  {
+  if (getCompat() != current_level) {
     ROS_ERROR(
-        "Use %s (%s%s) topic instead of %s (%s%s)",
-        nh_new.resolveName(topic_new, false).c_str(),
-        getSimplifiedNamespace(nh_new).c_str(), topic_new.c_str(),
-        nh_old.resolveName(topic_old, false).c_str(),
-        getSimplifiedNamespace(nh_old).c_str(), topic_old.c_str());
+      "Use %s (%s%s) topic instead of %s (%s%s)", nh_new.resolveName(topic_new, false).c_str(),
+      getSimplifiedNamespace(nh_new).c_str(), topic_new.c_str(),
+      nh_old.resolveName(topic_old, false).c_str(), getSimplifiedNamespace(nh_old).c_str(),
+      topic_old.c_str());
     return nh_old.advertise<M>(topic_old, queue_size, latch);
-  }
-  else
-  {
+  } else {
     return nh_new.advertise<M>(topic_new, queue_size, latch);
   }
 }
 template <class T, class MReq, class MRes>
 ros::ServiceServer advertiseService(
-    ros::NodeHandle& nh_new,
-    const std::string& service_new,
-    ros::NodeHandle& nh_old,
-    const std::string& service_old,
-    bool (T::*srv_func)(MReq&, MRes&),
-    T* obj)
+  ros::NodeHandle & nh_new, const std::string & service_new, ros::NodeHandle & nh_old,
+  const std::string & service_old, bool (T::*srv_func)(MReq &, MRes &), T * obj)
 {
-  if (getCompat() != current_level)
-  {
+  if (getCompat() != current_level) {
     ROS_ERROR(
-        "Use %s (%s%s) service instead of %s (%s%s)",
-        nh_new.resolveName(service_new, false).c_str(),
-        getSimplifiedNamespace(nh_new).c_str(), service_new.c_str(),
-        nh_old.resolveName(service_old, false).c_str(),
-        getSimplifiedNamespace(nh_old).c_str(), service_old.c_str());
+      "Use %s (%s%s) service instead of %s (%s%s)", nh_new.resolveName(service_new, false).c_str(),
+      getSimplifiedNamespace(nh_new).c_str(), service_new.c_str(),
+      nh_old.resolveName(service_old, false).c_str(), getSimplifiedNamespace(nh_old).c_str(),
+      service_old.c_str());
     return nh_old.advertiseService(service_old, srv_func, obj);
-  }
-  else
-  {
+  } else {
     return nh_new.advertiseService(service_new, srv_func, obj);
   }
 }
 
 template <typename T>
 void paramRename(
-    ros::NodeHandle& nh,
-    const std::string& param_name_new,
-    const std::string& param_name_old)
+  ros::NodeHandle & nh, const std::string & param_name_new, const std::string & param_name_old)
 {
-  if (nh.hasParam(param_name_old))
-  {
+  if (nh.hasParam(param_name_old)) {
     ROS_ERROR(
-        "Use %s parameter instead of %s",
-        nh.resolveName(param_name_new, false).c_str(),
-        nh.resolveName(param_name_old, false).c_str());
-    if (nh.hasParam(param_name_new))
-    {
+      "Use %s parameter instead of %s", nh.resolveName(param_name_new, false).c_str(),
+      nh.resolveName(param_name_old, false).c_str());
+    if (nh.hasParam(param_name_new)) {
       ROS_ERROR(
-          "%s is also defined. Ignoring %s.",
-          nh.resolveName(param_name_new, false).c_str(),
-          nh.resolveName(param_name_old, false).c_str());
+        "%s is also defined. Ignoring %s.", nh.resolveName(param_name_new, false).c_str(),
+        nh.resolveName(param_name_old, false).c_str());
       return;
     }
     T value;
@@ -224,4 +177,4 @@ void paramRename(
 }
 }  // namespace mcl_3dl_compat
 
-#endif  // MCL_3DL_COMPAT_COMPATIBILITY_H
+#endif  // MCL_3DL_COMPAT__COMPATIBILITY_H_

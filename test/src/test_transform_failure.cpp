@@ -27,24 +27,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <ros/ros.h>
-
-#include <ros/master.h>
-#include <geometry_msgs/TransformStamped.h>
-#include <sensor_msgs/point_cloud2_iterator.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2_ros/transform_broadcaster.h>
+#include <gtest/gtest.h>
 
 #include <string>
 
-#include <gtest/gtest.h>
+#include "geometry_msgs/TransformStamped.h"
+#include "ros/master.h"
+#include "ros/ros.h"
+#include "sensor_msgs/PointCloud2.h"
+#include "sensor_msgs/point_cloud2_iterator.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2_ros/transform_broadcaster.h"
 
 namespace
 {
 void GenerateSinglePointPointcloud2(
-    sensor_msgs::PointCloud2& cloud,
-    const float x, const float y, const float z)
+  sensor_msgs::PointCloud2 & cloud, const float x, const float y, const float z)
 {
   cloud.height = 1;
   cloud.width = 1;
@@ -61,10 +59,8 @@ void GenerateSinglePointPointcloud2(
   *iter_z = z;
 }
 void publishSinglePointPointcloud2(
-    ros::Publisher& pub,
-    const float x, const float y, const float z,
-    const std::string frame_id,
-    const ros::Time stamp)
+  ros::Publisher & pub, const float x, const float y, const float z, const std::string frame_id,
+  const ros::Time stamp)
 {
   sensor_msgs::PointCloud2 cloud;
   cloud.header.frame_id = frame_id;
@@ -82,35 +78,28 @@ TEST(TransformFailure, NoDeadAgainstTransformFailure)
   ros::Publisher pub_mapcloud = nh.advertise<sensor_msgs::PointCloud2>("mapcloud", 1, true);
 
   ros::Rate rate(10);
-  publishSinglePointPointcloud2(
-      pub_mapcloud,
-      0.0, 0.0, 0.0, "map", ros::Time::now());
+  publishSinglePointPointcloud2(pub_mapcloud, 0.0, 0.0, 0.0, "map", ros::Time::now());
 
-  while (ros::ok())
-  {
+  while (ros::ok()) {
     ros::spinOnce();
     rate.sleep();
 
     ros::V_string nodes;
     ros::master::getNodes(nodes);
     bool found = false;
-    for (auto node : nodes)
-    {
-      if (node == "/mcl_3dl")
-      {
+    for (auto node : nodes) {
+      if (node == "/mcl_3dl") {
         found = true;
         break;
       }
     }
-    if (found)
-      break;
+    if (found) break;
   }
   std::cerr << "mcl_3dl started" << std::endl;
   ros::Duration(1.0).sleep();
   int cnt = 0;
   // mcl_3dl is launched with required="true". This test is killed by roslaunch if mcl_3dl is dead.
-  while (ros::ok())
-  {
+  while (ros::ok()) {
     ++cnt;
     geometry_msgs::TransformStamped trans;
     trans.header.stamp = ros::Time::now() + ros::Duration(0.1);
@@ -124,24 +113,19 @@ TEST(TransformFailure, NoDeadAgainstTransformFailure)
     trans.child_frame_id = "odom";
     tfb.sendTransform(trans);
 
-    if (cnt > 10)
-    {
+    if (cnt > 10) {
       trans.header.frame_id = "base_link";
       trans.child_frame_id = "laser_link_base";
       tfb.sendTransform(trans);
     }
-    if (cnt > 20)
-    {
+    if (cnt > 20) {
       trans.header.frame_id = "odom";
       trans.child_frame_id = "base_link";
       tfb.sendTransform(trans);
     }
-    if (cnt > 30)
-      break;
+    if (cnt > 30) break;
 
-    publishSinglePointPointcloud2(
-        pub_cloud,
-        0.0, 0.0, 0.0, "laser_link", ros::Time::now());
+    publishSinglePointPointcloud2(pub_cloud, 0.0, 0.0, 0.0, "laser_link", ros::Time::now());
 
     ros::spinOnce();
     rate.sleep();
@@ -149,7 +133,7 @@ TEST(TransformFailure, NoDeadAgainstTransformFailure)
   ASSERT_TRUE(ros::ok());
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_transform_failure");

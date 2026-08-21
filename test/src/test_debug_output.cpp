@@ -27,57 +27,44 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <ros/ros.h>
-
-#include <nav_msgs/Odometry.h>
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/point_cloud2_iterator.h>
-#include <std_srvs/Trigger.h>
-#include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <gtest/gtest.h>
 
 #include <random>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "nav_msgs/Odometry.h"
+#include "ros/ros.h"
+#include "sensor_msgs/Imu.h"
+#include "sensor_msgs/PointCloud2.h"
+#include "sensor_msgs/point_cloud2_iterator.h"
+#include "std_srvs/Trigger.h"
+#include "tf2/utils.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 namespace
 {
 void generateSamplePointcloud2(
-    sensor_msgs::PointCloud2& cloud,
-    const float offset_x,
-    const float offset_y,
-    const float offset_z)
+  sensor_msgs::PointCloud2 & cloud, const float offset_x, const float offset_y,
+  const float offset_z)
 {
   cloud.height = 1;
   cloud.is_bigendian = false;
   cloud.is_dense = false;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-      4,
-      "x", 1, sensor_msgs::PointField::FLOAT32,
-      "y", 1, sensor_msgs::PointField::FLOAT32,
-      "z", 1, sensor_msgs::PointField::FLOAT32,
-      "intensity", 1, sensor_msgs::PointField::FLOAT32);
+    4, "x", 1, sensor_msgs::PointField::FLOAT32, "y", 1, sensor_msgs::PointField::FLOAT32, "z", 1,
+    sensor_msgs::PointField::FLOAT32, "intensity", 1, sensor_msgs::PointField::FLOAT32);
 
   class Point
   {
   public:
     float x_, y_, z_;
-    Point(const float x, const float y, const float z)
-      : x_(x)
-      , y_(y)
-      , z_(z)
-    {
-    }
+    Point(const float x, const float y, const float z) : x_(x), y_(y), z_(z) {}
   };
   std::vector<Point> points;
   // Draw cube
-  for (float x = -1; x < 1; x += 0.05)
-  {
-    for (float y = -1; y < 1; y += 0.05)
-    {
+  for (float x = -1; x < 1; x += 0.05) {
+    for (float y = -1; y < 1; y += 0.05) {
       points.push_back(Point(1.0 / 2 + offset_x, y + offset_y, x + offset_z));
       points.push_back(Point(-1.0 / 2 + offset_x, y + offset_y, x + offset_z));
     }
@@ -89,8 +76,7 @@ void generateSamplePointcloud2(
   sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
 
-  for (const Point& p : points)
-  {
+  for (const Point & p : points) {
     *iter_x = p.x_;
     *iter_y = p.y_;
     *iter_z = p.z_;
@@ -101,9 +87,7 @@ void generateSamplePointcloud2(
 }
 
 inline sensor_msgs::PointCloud2 generateMapMsg(
-    const float offset_x,
-    const float offset_y,
-    const float offset_z)
+  const float offset_x, const float offset_y, const float offset_z)
 {
   sensor_msgs::PointCloud2 cloud;
   generateSamplePointcloud2(cloud, offset_x, offset_y, offset_z);
@@ -142,16 +126,10 @@ TEST(DebugOutput, MatchedUnmatched)
 {
   sensor_msgs::PointCloud2::ConstPtr matched, unmatched;
 
-  const boost::function<void(const sensor_msgs::PointCloud2::ConstPtr&)> cb_matched =
-      [&matched](const sensor_msgs::PointCloud2::ConstPtr& msg) -> void
-  {
-    matched = msg;
-  };
-  const boost::function<void(const sensor_msgs::PointCloud2::ConstPtr&)> cb_unmatched =
-      [&unmatched](const sensor_msgs::PointCloud2::ConstPtr& msg) -> void
-  {
-    unmatched = msg;
-  };
+  const boost::function<void(const sensor_msgs::PointCloud2::ConstPtr &)> cb_matched =
+    [&matched](const sensor_msgs::PointCloud2::ConstPtr & msg) -> void { matched = msg; };
+  const boost::function<void(const sensor_msgs::PointCloud2::ConstPtr &)> cb_unmatched =
+    [&unmatched](const sensor_msgs::PointCloud2::ConstPtr & msg) -> void { unmatched = msg; };
 
   ros::NodeHandle nh("");
   ros::Subscriber sub_matched = nh.subscribe("mcl_3dl/matched", 1, cb_matched);
@@ -169,12 +147,10 @@ TEST(DebugOutput, MatchedUnmatched)
 
   ros::Duration(1.0).sleep();
   ros::Rate rate(10);
-  for (int i = 0; i < 40; ++i)
-  {
+  for (int i = 0; i < 40; ++i) {
     rate.sleep();
     ros::spinOnce();
-    if (matched && unmatched)
-      break;
+    if (matched && unmatched) break;
     pub_cloud.publish(generateCloudMsg());
     pub_imu.publish(generateImuMsg());
     pub_odom.publish(generateOdomMsg());
@@ -191,8 +167,7 @@ TEST(DebugOutput, MatchedUnmatched)
     sensor_msgs::PointCloud2ConstIterator<float> x(*matched, "x");
     sensor_msgs::PointCloud2ConstIterator<float> y(*matched, "y");
     sensor_msgs::PointCloud2ConstIterator<float> z(*matched, "z");
-    for (; x != x.end(); ++x, ++y, ++z)
-    {
+    for (; x != x.end(); ++x, ++y, ++z) {
       ASSERT_NEAR(*x, 0.5f, 0.1f);
       ASSERT_TRUE(-1.1 < *y && *y < 1.1);
       ASSERT_TRUE(-1.1 < *z && *z < 1.1);
@@ -202,8 +177,7 @@ TEST(DebugOutput, MatchedUnmatched)
     sensor_msgs::PointCloud2ConstIterator<float> x(*unmatched, "x");
     sensor_msgs::PointCloud2ConstIterator<float> y(*unmatched, "y");
     sensor_msgs::PointCloud2ConstIterator<float> z(*unmatched, "z");
-    for (; x != x.end(); ++x, ++y, ++z)
-    {
+    for (; x != x.end(); ++x, ++y, ++z) {
       ASSERT_NEAR(*x, -0.5f, 0.1f);
       ASSERT_TRUE(-1.1 < *y && *y < 1.1);
       ASSERT_TRUE(-1.1 < *z && *z < 1.1);
@@ -211,7 +185,7 @@ TEST(DebugOutput, MatchedUnmatched)
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_debug_output");

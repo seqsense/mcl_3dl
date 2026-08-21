@@ -27,60 +27,47 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <ros/ros.h>
-
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <mcl_3dl_msgs/Status.h>
-#include <nav_msgs/Odometry.h>
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/point_cloud2_iterator.h>
-#include <std_srvs/Trigger.h>
-#include <tf2/utils.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <gtest/gtest.h>
 
 #include <random>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "geometry_msgs/PoseArray.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "mcl_3dl_msgs/Status.h"
+#include "nav_msgs/Odometry.h"
+#include "ros/ros.h"
+#include "sensor_msgs/Imu.h"
+#include "sensor_msgs/PointCloud2.h"
+#include "sensor_msgs/point_cloud2_iterator.h"
+#include "std_srvs/Trigger.h"
+#include "tf2/utils.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 namespace
 {
 void generateSamplePointcloud2(
-    sensor_msgs::PointCloud2& cloud,
-    const float offset_x,
-    const float offset_y,
-    const float offset_z)
+  sensor_msgs::PointCloud2 & cloud, const float offset_x, const float offset_y,
+  const float offset_z)
 {
   cloud.height = 1;
   cloud.is_bigendian = false;
   cloud.is_dense = false;
   sensor_msgs::PointCloud2Modifier modifier(cloud);
   modifier.setPointCloud2Fields(
-      4,
-      "x", 1, sensor_msgs::PointField::FLOAT32,
-      "y", 1, sensor_msgs::PointField::FLOAT32,
-      "z", 1, sensor_msgs::PointField::FLOAT32,
-      "intensity", 1, sensor_msgs::PointField::FLOAT32);
+    4, "x", 1, sensor_msgs::PointField::FLOAT32, "y", 1, sensor_msgs::PointField::FLOAT32, "z", 1,
+    sensor_msgs::PointField::FLOAT32, "intensity", 1, sensor_msgs::PointField::FLOAT32);
 
   class Point
   {
   public:
     float x_, y_, z_;
-    Point(const float x, const float y, const float z)
-      : x_(x)
-      , y_(y)
-      , z_(z)
-    {
-    }
+    Point(const float x, const float y, const float z) : x_(x), y_(y), z_(z) {}
   };
   std::vector<Point> points;
   // Draw cube
-  for (float x = -1; x < 1; x += 0.05)
-  {
-    for (float y = -1; y < 1; y += 0.05)
-    {
+  for (float x = -1; x < 1; x += 0.05) {
+    for (float y = -1; y < 1; y += 0.05) {
       points.push_back(Point(x / 2 + offset_x, y + offset_y, 1.0 + offset_z));
       points.push_back(Point(x / 2 + offset_x, y + offset_y, -1.0 + offset_z));
       points.push_back(Point(1.0 / 2 + offset_x, y + offset_y, x + offset_z));
@@ -96,8 +83,7 @@ void generateSamplePointcloud2(
   sensor_msgs::PointCloud2Iterator<float> iter_y(cloud, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(cloud, "z");
 
-  for (const Point& p : points)
-  {
+  for (const Point & p : points) {
     *iter_x = p.x_;
     *iter_y = p.y_;
     *iter_z = p.z_;
@@ -108,9 +94,7 @@ void generateSamplePointcloud2(
 }
 
 inline sensor_msgs::PointCloud2 generateMapMsg(
-    const float offset_x,
-    const float offset_y,
-    const float offset_z)
+  const float offset_x, const float offset_y, const float offset_z)
 {
   sensor_msgs::PointCloud2 cloud;
   generateSamplePointcloud2(cloud, offset_x, offset_y, offset_z);
@@ -177,32 +161,23 @@ protected:
   geometry_msgs::PoseWithCovarianceStamped::ConstPtr pose_cov_;
   mcl_3dl_msgs::Status::ConstPtr status_;
 
-  void cbPose(const geometry_msgs::PoseArray::ConstPtr& msg)
-  {
-    poses_ = msg;
-  }
-  void cbStatus(const mcl_3dl_msgs::Status::ConstPtr& msg)
-  {
-    status_ = msg;
-  }
-  void cbPoseCov(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+  void cbPose(const geometry_msgs::PoseArray::ConstPtr & msg) { poses_ = msg; }
+  void cbStatus(const mcl_3dl_msgs::Status::ConstPtr & msg) { status_ = msg; }
+  void cbPoseCov(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr & msg)
   {
     pose_cov_ = msg;
   }
-  bool findTruePose(const tf2::Transform& true_pose)
+  bool findTruePose(const tf2::Transform & true_pose)
   {
-    if (!poses_)
-      return false;
+    if (!poses_) return false;
 
     bool found_true_positive(false);
-    for (const auto& pose : poses_->poses)
-    {
+    for (const auto & pose : poses_->poses) {
       tf2::Transform particle_pose;
       tf2::fromMsg(pose, particle_pose);
 
       const tf2::Transform tf_diff = particle_pose.inverse() * true_pose;
-      if (tf_diff.getOrigin().length() < 2e-1 &&
-          fabs(tf2::getYaw(tf_diff.getRotation())) < 2e-1)
+      if (tf_diff.getOrigin().length() < 2e-1 && fabs(tf2::getYaw(tf_diff.getRotation())) < 2e-1)
         found_true_positive = true;
     }
     return found_true_positive;
@@ -214,14 +189,11 @@ protected:
 
     pub_init_.publish(generateInitialPose());
     ros::Rate wait(10);
-    for (int i = 0; i < 100; i++)
-    {
+    for (int i = 0; i < 100; i++) {
       wait.sleep();
       ros::spinOnce();
-      if (pose_cov_)
-        break;
-      if (!ros::ok())
-        break;
+      if (pose_cov_) break;
+      if (!ros::ok()) break;
     }
   }
 
@@ -236,12 +208,10 @@ public:
     pub_cloud_ = nh_.advertise<sensor_msgs::PointCloud2>("cloud", 1);
     pub_imu_ = nh_.advertise<sensor_msgs::Imu>("imu/data", 1);
     pub_odom_ = nh_.advertise<nav_msgs::Odometry>("odom", 1);
-    pub_init_ =
-        nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1, true);
+    pub_init_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1, true);
 
     src_expansion_resetting_ =
-        nh_.serviceClient<std_srvs::TriggerRequest, std_srvs::TriggerResponse>(
-            "expansion_resetting");
+      nh_.serviceClient<std_srvs::TriggerRequest, std_srvs::TriggerResponse>("expansion_resetting");
   }
 };
 
@@ -255,12 +225,10 @@ TEST_F(ExpansionResetting, ExpandAndResume)
   ros::Duration(1.0).sleep();
   ros::Rate rate(10);
   // Wait until finishing expansion resetting
-  for (int i = 0; i < 40; ++i)
-  {
+  for (int i = 0; i < 40; ++i) {
     rate.sleep();
     ros::spinOnce();
-    if (status_ && status_->status == mcl_3dl_msgs::Status::EXPANSION_RESETTING)
-      i = 0;
+    if (status_ && status_->status == mcl_3dl_msgs::Status::EXPANSION_RESETTING) i = 0;
     pub_cloud_.publish(generateCloudMsg());
     pub_imu_.publish(generateImuMsg());
     pub_odom_.publish(generateOdomMsg());
@@ -270,10 +238,8 @@ TEST_F(ExpansionResetting, ExpandAndResume)
   ASSERT_TRUE(static_cast<bool>(status_));
   ASSERT_TRUE(static_cast<bool>(poses_));
 
-  ASSERT_TRUE(
-      findTruePose(tf2::Transform(
-          tf2::Quaternion(0, 0, 0, 1),
-          tf2::Vector3(offset_x, offset_y, offset_z))));
+  ASSERT_TRUE(findTruePose(
+    tf2::Transform(tf2::Quaternion(0, 0, 0, 1), tf2::Vector3(offset_x, offset_y, offset_z))));
 }
 
 TEST_F(ExpansionResetting, ManualExpand)
@@ -287,12 +253,10 @@ TEST_F(ExpansionResetting, ManualExpand)
   ros::Rate rate(10);
 
   // Ensure that the node is not in expansion resetting mode
-  for (int i = 0; i < 40; ++i)
-  {
+  for (int i = 0; i < 40; ++i) {
     rate.sleep();
     ros::spinOnce();
-    if (i > 5 && status_ && status_->status != mcl_3dl_msgs::Status::EXPANSION_RESETTING)
-      break;
+    if (i > 5 && status_ && status_->status != mcl_3dl_msgs::Status::EXPANSION_RESETTING) break;
 
     pub_cloud_.publish(generateCloudMsg());
     pub_imu_.publish(generateImuMsg());
@@ -307,12 +271,10 @@ TEST_F(ExpansionResetting, ManualExpand)
   ros::Duration(0.2).sleep();
 
   // Wait until finishing expansion resetting
-  for (int i = 0; i < 40; ++i)
-  {
+  for (int i = 0; i < 40; ++i) {
     rate.sleep();
     ros::spinOnce();
-    if (status_)
-    {
+    if (status_) {
       ASSERT_NE(status_->status, mcl_3dl_msgs::Status::EXPANSION_RESETTING);
     }
     pub_cloud_.publish(generateCloudMsg());
@@ -324,13 +286,11 @@ TEST_F(ExpansionResetting, ManualExpand)
   ASSERT_TRUE(static_cast<bool>(status_));
   ASSERT_TRUE(static_cast<bool>(poses_));
 
-  ASSERT_TRUE(
-      findTruePose(tf2::Transform(
-          tf2::Quaternion(0, 0, 0, 1),
-          tf2::Vector3(offset_x, offset_y, offset_z))));
+  ASSERT_TRUE(findTruePose(
+    tf2::Transform(tf2::Quaternion(0, 0, 0, 1), tf2::Vector3(offset_x, offset_y, offset_z))));
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "test_expansion_resetting");

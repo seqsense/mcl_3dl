@@ -26,21 +26,25 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef MCL_3DL_PARAMETERS_H
-#define MCL_3DL_PARAMETERS_H
+#ifndef MCL_3DL__PARAMETERS_H_
+#define MCL_3DL__PARAMETERS_H_
 
 #include <cmath>
 #include <map>
 #include <memory>
 #include <string>
 
-#include <dynamic_reconfigure/server.h>
-#include <ros/ros.h>
+#include "rclcpp/rclcpp.hpp"
 
-#include <mcl_3dl/MCL3DLParamsConfig.h>
-#include <mcl_3dl/quat.h>
-#include <mcl_3dl/state_6dof.h>
-#include <mcl_3dl/vec3.h>
+#ifdef IS_ROS1_BUILD
+#include "dynamic_reconfigure/server.h"
+#include "mcl_3dl/MCL3DLParamsConfig.h"
+#include "ros/ros.h"
+#endif
+
+#include "mcl_3dl/quat.h"
+#include "mcl_3dl/state_6dof.h"
+#include "mcl_3dl/vec3.h"
 
 namespace mcl_3dl
 {
@@ -48,10 +52,10 @@ class PointCloudSamplerWithNormalParameters
 {
 public:
   PointCloudSamplerWithNormalParameters()
-    : perform_weighting_ratio_(2.0)
-    , max_weight_ratio_(5.0)
-    , max_weight_(5.0)
-    , normal_search_range_(0.4)
+  : perform_weighting_ratio_(2.0),
+    max_weight_ratio_(5.0),
+    max_weight_(5.0),
+    normal_search_range_(0.4)
   {
   }
 
@@ -65,15 +69,15 @@ class LidarMeasurementModelLikelihoodParameters
 {
 public:
   LidarMeasurementModelLikelihoodParameters()
-    : num_points_default_(96)
-    , num_points_global_(8)
-    , clip_far_(10.0)
-    , clip_near_(0.5)
-    , clip_z_min_(-2.0)
-    , clip_z_max_(2.0)
-    , match_weight_(5.0)
-    , match_dist_min_(0.2)
-    , match_dist_flat_(0.05)
+  : num_points_default_(96),
+    num_points_global_(8),
+    clip_far_(10.0),
+    clip_near_(0.5),
+    clip_z_min_(-2.0),
+    clip_z_max_(2.0),
+    match_weight_(5.0),
+    match_dist_min_(0.2),
+    match_dist_flat_(0.05)
   {
   }
 
@@ -92,23 +96,23 @@ class LidarMeasurementModelBeamParameters
 {
 public:
   LidarMeasurementModelBeamParameters()
-    : map_grid_x_(0.1)
-    , map_grid_y_(0.1)
-    , map_grid_z_(0.1)
-    , num_points_default_(3)
-    , num_points_global_(0)
-    , clip_far_(4.0)
-    , clip_near_(0.5)
-    , clip_z_min_(-2.0)
-    , clip_z_max_(2.0)
-    , beam_likelihood_min_(0.2)
-    , ang_total_ref_(M_PI / 6.0)
-    , filter_label_max_(static_cast<int>(0xFFFFFFFF))
-    , hit_range_(0.3)
-    , add_penalty_short_only_mode_(true)
-    , use_raycast_using_dda_(false)
-    , ray_angle_half_(0.25 * M_PI / 180.0)
-    , dda_grid_size_(0.2)
+  : map_grid_x_(0.1),
+    map_grid_y_(0.1),
+    map_grid_z_(0.1),
+    num_points_default_(3),
+    num_points_global_(0),
+    clip_far_(4.0),
+    clip_near_(0.5),
+    clip_z_min_(-2.0),
+    clip_z_max_(2.0),
+    beam_likelihood_min_(0.2),
+    ang_total_ref_(M_PI / 6.0),
+    filter_label_max_(static_cast<int>(0xFFFFFFFF)),
+    hit_range_(0.3),
+    add_penalty_short_only_mode_(true),
+    use_raycast_using_dda_(false),
+    ray_angle_half_(0.25 * M_PI / 180.0),
+    dda_grid_size_(0.2)
   {
   }
 
@@ -135,7 +139,9 @@ class Parameters
 {
 public:
   Parameters();
-  bool load(ros::NodeHandle& nh);
+#ifdef IS_ROS1_BUILD
+  bool load(ros::NodeHandle & nh);
+#endif
 
   bool fake_imu_, fake_odom_;
   double map_downsample_x_;
@@ -172,7 +178,7 @@ public:
   double odom_err_lin_ang_;
   double odom_err_ang_lin_;
   double odom_err_ang_ang_;
-  std::shared_ptr<ros::Duration> map_update_interval_;
+  std::shared_ptr<rclcpp::Duration> map_update_interval_;
   int num_particles_;
   int skip_measure_;
   int accum_cloud_;
@@ -186,8 +192,8 @@ public:
   double odom_err_integ_lin_sigma_;
   double odom_err_integ_ang_tc_;
   double odom_err_integ_ang_sigma_;
-  std::shared_ptr<ros::Duration> match_output_interval_;
-  std::shared_ptr<ros::Duration> tf_tolerance_;
+  std::shared_ptr<rclcpp::Duration> match_output_interval_;
+  std::shared_ptr<rclcpp::Duration> tf_tolerance_;
   double lpf_step_;
   double acc_lpf_step_;
   std::array<float, 4> dist_weight_;
@@ -203,10 +209,12 @@ public:
   std::shared_ptr<LidarMeasurementModelLikelihoodParameters> lidar_measurement_likelihood_params_;
   std::shared_ptr<LidarMeasurementModelBeamParameters> lidar_measurement_beam_params_;
 
+#ifdef IS_ROS1_BUILD
 private:
   std::unique_ptr<dynamic_reconfigure::Server<MCL3DLParamsConfig>> parameter_server_;
-  void cbParameter(const MCL3DLParamsConfig& config, const uint32_t /* level */);
+  void cbParameter(const MCL3DLParamsConfig & config, const uint32_t /* level */);
+#endif
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_PARAMETERS_H
+#endif  // MCL_3DL__PARAMETERS_H_

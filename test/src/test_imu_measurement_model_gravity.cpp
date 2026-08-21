@@ -29,23 +29,25 @@
 
 #include <gtest/gtest.h>
 
-#include <mcl_3dl/imu_measurement_models/imu_measurement_model_gravity.h>
+#include "mcl_3dl/imu_measurement_models/imu_measurement_model_gravity.h"
 
 TEST(ImuMeasurementModelGravity, measure)
 {
   mcl_3dl::ImuMeasurementModelGravity measurement(M_PI / 4.0);
   measurement.setAccMeasure(mcl_3dl::Vec3(0.1, 0.2, 0.3));
-  mcl_3dl::State6DOF s1(mcl_3dl::Vec3(0.0, 0.0, 0.0),
-                        mcl_3dl::Quat(mcl_3dl::Vec3(M_PI / 18.0, M_PI / 6.0, M_PI / -2.0)));
+  mcl_3dl::State6DOF s1(
+    mcl_3dl::Vec3(0.0, 0.0, 0.0),
+    mcl_3dl::Quat(mcl_3dl::Vec3(M_PI / 18.0, M_PI / 6.0, M_PI / -2.0)));
   EXPECT_NEAR(measurement.measure(s1), 0.2678633, 1.0e-6);
 
   measurement.setAccMeasure(mcl_3dl::Vec3(-0.3, -0.2, -0.1));
-  mcl_3dl::State6DOF s2(mcl_3dl::Vec3(0.0, 0.0, 0.0),
-                        mcl_3dl::Quat(mcl_3dl::Vec3(-M_PI / 12.0, M_PI / 36.0, M_PI * 1.5)));
+  mcl_3dl::State6DOF s2(
+    mcl_3dl::Vec3(0.0, 0.0, 0.0),
+    mcl_3dl::Quat(mcl_3dl::Vec3(-M_PI / 12.0, M_PI / 36.0, M_PI * 1.5)));
   EXPECT_NEAR(measurement.measure(s2), 0.0604828, 1.0e-6);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

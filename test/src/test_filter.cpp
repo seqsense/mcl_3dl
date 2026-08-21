@@ -27,31 +27,28 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <cstddef>
-
 #include <gtest/gtest.h>
 
-#include <mcl_3dl/filter.h>
+#include <cstddef>
+
+#include "mcl_3dl/filter.h"
 
 TEST(Filter, LPFCharacteristic)
 {
-  for (int time_const = 20; time_const < 100; time_const += 20)
-  {
+  for (int time_const = 20; time_const < 100; time_const += 20) {
     mcl_3dl::Filter lpf(mcl_3dl::Filter::FILTER_LPF, time_const, 0.0);
     ASSERT_LT(fabs(lpf.get()), 1e-6);
 
     // Input step function
     float ret = 0;
-    for (int i = 0; i < time_const; ++i)
-    {
+    for (int i = 0; i < time_const; ++i) {
       ret = lpf.in(1.0);
     }
     // Check value at 1 time unit
     ASSERT_TRUE(ret == lpf.get());
     ASSERT_LT(fabs(ret - (1.0 - expf(-1.0))), 1e-2);
 
-    for (int i = time_const; i < time_const * 100; ++i)
-    {
+    for (int i = time_const; i < time_const * 100; ++i) {
       ret = lpf.in(1.0);
     }
     // Check value at inf time
@@ -68,14 +65,12 @@ TEST(Filter, LPFCharacteristic)
 
 TEST(Filter, HPFCharacteristic)
 {
-  for (int time_const = 20; time_const < 100; time_const += 20)
-  {
+  for (int time_const = 20; time_const < 100; time_const += 20) {
     mcl_3dl::Filter lpf(mcl_3dl::Filter::FILTER_LPF, time_const, 0.0);
     mcl_3dl::Filter hpf(mcl_3dl::Filter::FILTER_HPF, time_const, 0.0);
 
     // Input step function
-    for (int i = 0; i < time_const * 10; ++i)
-    {
+    for (int i = 0; i < time_const * 10; ++i) {
       float ret_h, ret_l;
       ret_l = lpf.in(1.0);
       ret_h = hpf.in(1.0);
@@ -88,8 +83,7 @@ TEST(Filter, HPFCharacteristic)
 
 TEST(Filter, AugleLPF)
 {
-  for (float zero = 0.0; zero < M_PI * 2 * 4; zero += M_PI * 2)
-  {
+  for (float zero = 0.0; zero < M_PI * 2 * 4; zero += M_PI * 2) {
     // Check 0.5 rad to 2pi - 0.5 rad transition
     const float start1 = zero + 0.5;
     const float end1 = zero + M_PI * 2.0 - 0.5;
@@ -99,8 +93,7 @@ TEST(Filter, AugleLPF)
     ASSERT_LT(fabs(lpf.get() - start1), 1e-6);
     ASSERT_LT(fabs(lpf_angle.get() - start1), 1e-6);
 
-    for (int i = 0; i < 100; ++i)
-    {
+    for (int i = 0; i < 100; ++i) {
       lpf.in(end1);
       lpf_angle.in(end1);
       ASSERT_GT(lpf.get(), start1);
@@ -118,8 +111,7 @@ TEST(Filter, AugleLPF)
     ASSERT_LT(fabs(lpf.get() - start2), 1e-6);
     ASSERT_LT(fabs(lpf_angle.get() - start2), 1e-6);
 
-    for (int i = 0; i < 100; ++i)
-    {
+    for (int i = 0; i < 100; ++i) {
       lpf.in(end2);
       lpf_angle.in(end2);
       ASSERT_LT(lpf.get(), start2);
@@ -130,7 +122,7 @@ TEST(Filter, AugleLPF)
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

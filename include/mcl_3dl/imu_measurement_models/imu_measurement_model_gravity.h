@@ -27,35 +27,31 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_IMU_MEASUREMENT_MODELS_IMU_MEASUREMENT_MODEL_GRAVITY_H
-#define MCL_3DL_IMU_MEASUREMENT_MODELS_IMU_MEASUREMENT_MODEL_GRAVITY_H
+#ifndef MCL_3DL__IMU_MEASUREMENT_MODELS__IMU_MEASUREMENT_MODEL_GRAVITY_H_
+#define MCL_3DL__IMU_MEASUREMENT_MODELS__IMU_MEASUREMENT_MODEL_GRAVITY_H_
 
 #include <memory>
 
-#include <mcl_3dl/imu_measurement_model_base.h>
-#include <mcl_3dl/nd.h>
+#include "mcl_3dl/imu_measurement_model_base.h"
+#include "mcl_3dl/nd.h"
 
 namespace mcl_3dl
 {
 class ImuMeasurementModelGravity : public ImuMeasurementModelBase
 {
 public:
-  explicit ImuMeasurementModelGravity(const float acc_var)
-    : nd_(acc_var)
-  {
-  }
+  explicit ImuMeasurementModelGravity(const float acc_var) : nd_(acc_var) {}
 
-  inline void setAccMeasure(const Vec3& acc_measure) final
+  inline void setAccMeasure(const Vec3 & acc_measure) final
   {
     acc_measure_ = acc_measure;
     acc_measure_norm_ = acc_measure.norm();
   }
 
-  inline float measure(const State6DOF& s) const final
+  inline float measure(const State6DOF & s) const final
   {
     const Vec3 acc_estim = s.rot_.inv() * Vec3(0.0, 0.0, 1.0);
-    const float diff = acosf(
-        acc_estim.dot(acc_measure_) / (acc_measure_norm_ * acc_estim.norm()));
+    const float diff = acosf(acc_estim.dot(acc_measure_) / (acc_measure_norm_ * acc_estim.norm()));
     return nd_(diff);
   }
 
@@ -67,4 +63,4 @@ private:
 
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_IMU_MEASUREMENT_MODELS_IMU_MEASUREMENT_MODEL_GRAVITY_H
+#endif  // MCL_3DL__IMU_MEASUREMENT_MODELS__IMU_MEASUREMENT_MODEL_GRAVITY_H_

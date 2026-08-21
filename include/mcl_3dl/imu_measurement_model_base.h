@@ -27,12 +27,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_IMU_MEASUREMENT_MODEL_BASE_H
-#define MCL_3DL_IMU_MEASUREMENT_MODEL_BASE_H
+#ifndef MCL_3DL__IMU_MEASUREMENT_MODEL_BASE_H_
+#define MCL_3DL__IMU_MEASUREMENT_MODEL_BASE_H_
 
 #include <memory>
 
-#include <mcl_3dl/state_6dof.h>
+#include "mcl_3dl/state_6dof.h"
 
 namespace mcl_3dl
 {
@@ -41,9 +41,9 @@ class ImuMeasurementModelBase
 public:
   using Ptr = std::shared_ptr<ImuMeasurementModelBase>;
 
-  virtual void setAccMeasure(const Vec3& acc_measure) = 0;
-  virtual float measure(const State6DOF& s) const = 0;
+  virtual void setAccMeasure(const Vec3 & acc_measure) = 0;
+  virtual float measure(const State6DOF & s) const = 0;
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_IMU_MEASUREMENT_MODEL_BASE_H
+#endif  // MCL_3DL__IMU_MEASUREMENT_MODEL_BASE_H_

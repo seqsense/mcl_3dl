@@ -1,1 +1,9 @@
 .dataset
+.git_linked
+build/
+install/
+log/
+
+# Heavy bag-replay test data — fetched manually, see test/CMakeLists.txt
+# (ROS 1) and CMakeLists.txt MCL_3DL_EXTRA_TESTS block (ROS 2).
+test/data/

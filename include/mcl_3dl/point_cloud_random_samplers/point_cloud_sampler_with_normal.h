@@ -27,26 +27,25 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_POINT_CLOUD_RANDOM_SAMPLERS_POINT_CLOUD_SAMPLER_WITH_NORMAL_H
-#define MCL_3DL_POINT_CLOUD_RANDOM_SAMPLERS_POINT_CLOUD_SAMPLER_WITH_NORMAL_H
+#ifndef MCL_3DL__POINT_CLOUD_RANDOM_SAMPLERS__POINT_CLOUD_SAMPLER_WITH_NORMAL_H_
+#define MCL_3DL__POINT_CLOUD_RANDOM_SAMPLERS__POINT_CLOUD_SAMPLER_WITH_NORMAL_H_
 
+#include <chrono>
 #include <memory>
 #include <random>
 #include <unordered_set>
 #include <vector>
 
-#include <Eigen/Core>
-#include <Eigen/Eigenvalues>
-
-#include <pcl/features/normal_3d.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <ros/ros.h>
-
-#include <mcl_3dl/point_cloud_random_sampler.h>
-#include <mcl_3dl/parameters.h>
-#include <mcl_3dl/state_6dof.h>
+#include "Eigen/Core"
+#include "Eigen/Eigenvalues"
+#include "mcl_3dl/parameters.h"
+#include "mcl_3dl/point_cloud_random_sampler.h"
+#include "mcl_3dl/state_6dof.h"
+#include "pcl/features/normal_3d.h"
+#include "pcl/kdtree/kdtree_flann.h"
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
+#include "rclcpp/rclcpp.hpp"
 
 namespace mcl_3dl
 {
@@ -65,21 +64,20 @@ private:
 
 public:
   PointCloudSamplerWithNormal(
-      const std::shared_ptr<PointCloudSamplerWithNormalParameters>& params,
-      const unsigned int random_seed = std::random_device()())
-    : engine_(std::make_shared<std::default_random_engine>(random_seed))
+    const std::shared_ptr<PointCloudSamplerWithNormalParameters> & params,
+    const unsigned int random_seed = std::random_device()())
+  : engine_(std::make_shared<std::default_random_engine>(random_seed))
   {
     params_ = params ? params : std::make_shared<PointCloudSamplerWithNormalParameters>();
   }
 
-  void setParticleStatistics(const State6DOF& mean, const std::vector<State6DOF>& covariances) final
+  void setParticleStatistics(
+    const State6DOF & mean, const std::vector<State6DOF> & covariances) final
   {
     mean_ = mean;
     Matrix pos_cov(3, 3);
-    for (size_t i = 0; i < 3; ++i)
-    {
-      for (size_t j = 0; j < 3; ++j)
-      {
+    for (size_t i = 0; i < 3; ++i) {
+      for (size_t j = 0; j < 3; ++j) {
         pos_cov(i, j) = std::abs(covariances[i][j]);
       }
     }
@@ -89,20 +87,17 @@ public:
   }
 
   typename pcl::PointCloud<POINT_TYPE>::Ptr sample(
-      const typename pcl::PointCloud<POINT_TYPE>::ConstPtr& pc,
-      const size_t num) const final
+    const typename pcl::PointCloud<POINT_TYPE>::ConstPtr & pc, const size_t num) const final
   {
-    const ros::WallTime start_timestamp = ros::WallTime::now();
+    const auto start_timestamp = std::chrono::steady_clock::now();
 
     typename pcl::PointCloud<POINT_TYPE>::Ptr output(new pcl::PointCloud<POINT_TYPE>);
     output->header = pc->header;
 
-    if ((pc->points.size() == 0) || (num == 0))
-    {
+    if ((pc->points.size() == 0) || (num == 0)) {
       return output;
     }
-    if (pc->size() <= num)
-    {
+    if (pc->size() <= num) {
       *output = *pc;
       return output;
     }
@@ -110,22 +105,17 @@ public:
     const double eigen_value_ratio = std::sqrt(eigen_values_[2] / eigen_values_[1]);
 
     double max_weight = 1.0;
-    if (eigen_value_ratio < params_->perform_weighting_ratio_)
-    {
+    if (eigen_value_ratio < params_->perform_weighting_ratio_) {
       max_weight = 1.0;
-    }
-    else if (eigen_value_ratio > params_->max_weight_ratio_)
-    {
+    } else if (eigen_value_ratio > params_->max_weight_ratio_) {
       max_weight = params_->max_weight_;
-    }
-    else
-    {
-      const double weight_ratio =
-          (eigen_value_ratio - params_->perform_weighting_ratio_) /
-          (params_->max_weight_ratio_ - params_->perform_weighting_ratio_);
+    } else {
+      const double weight_ratio = (eigen_value_ratio - params_->perform_weighting_ratio_) /
+                                  (params_->max_weight_ratio_ - params_->perform_weighting_ratio_);
       max_weight = 1.0 + (params_->max_weight_ - 1.0) * weight_ratio;
     }
-    const mcl_3dl::Vec3 fpc_global(eigen_vectors_(0, 2), eigen_vectors_(1, 2), eigen_vectors_(2, 2));
+    const mcl_3dl::Vec3 fpc_global(
+      eigen_vectors_(0, 2), eigen_vectors_(1, 2), eigen_vectors_(2, 2));
     const mcl_3dl::Vec3 fpc_local = mean_.rot_.inv() * fpc_global;
     pcl::NormalEstimation<POINT_TYPE, pcl::Normal> ne;
     pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
@@ -135,20 +125,19 @@ public:
     ne.setRadiusSearch(params_->normal_search_range_);
     ne.compute(*cloud_normals);
 
-    const ros::WallTime compute_normal_timestamp = ros::WallTime::now();
+    const auto compute_normal_timestamp = std::chrono::steady_clock::now();
     std::vector<double> cumulative_weight(cloud_normals->points.size(), 0.0);
-    for (size_t i = 0; i < cloud_normals->points.size(); i++)
-    {
+    for (size_t i = 0; i < cloud_normals->points.size(); i++) {
       double weight = 1.0;
-      const auto& normal = cloud_normals->points[i];
-      if (!std::isnan(normal.normal_x) && !std::isnan(normal.normal_y) && !std::isnan(normal.normal_z))
-      {
-        double acos_angle = std::abs(normal.normal_x * fpc_local.x_ +
-                                     normal.normal_y * fpc_local.y_ +
-                                     normal.normal_z * fpc_local.z_);
+      const auto & normal = cloud_normals->points[i];
+      if (
+        !std::isnan(normal.normal_x) && !std::isnan(normal.normal_y) &&
+        !std::isnan(normal.normal_z)) {
+        double acos_angle = std::abs(
+          normal.normal_x * fpc_local.x_ + normal.normal_y * fpc_local.y_ +
+          normal.normal_z * fpc_local.z_);
         // Avoid that std::acos() returns nan because of calculation errors
-        if (acos_angle > 1.0)
-        {
+        if (acos_angle > 1.0) {
           acos_angle = 1.0;
         }
         const double angle = std::acos(acos_angle);
@@ -159,32 +148,33 @@ public:
     std::uniform_real_distribution<double> ud(0, cumulative_weight.back());
     // Use unordered_set to avoid duplication
     std::unordered_set<size_t> selected_ids;
-    while (true)
-    {
+    while (true) {
       const double random_value = ud(*engine_);
       auto it = std::lower_bound(cumulative_weight.begin(), cumulative_weight.end(), random_value);
       const size_t n = it - cumulative_weight.begin();
       selected_ids.insert(n);
-      if (selected_ids.size() >= num)
-      {
+      if (selected_ids.size() >= num) {
         break;
       }
     }
     output->points.reserve(num);
-    for (const auto& index : selected_ids)
-    {
+    for (const auto & index : selected_ids) {
       output->push_back(pc->points[index]);
     }
 
-    const ros::WallTime final_timestamp = ros::WallTime::now();
-    ROS_DEBUG("PointCloudSamplerWithNormal::sample() computation time: %f[s] (Normal calculation: %f[s])",
-              (final_timestamp - start_timestamp).toSec(), (compute_normal_timestamp - start_timestamp).toSec());
-    ROS_DEBUG("Chosen eigen vector: (%f, %f, %f), max weight: %f",
-              eigen_vectors_(0, 2), eigen_vectors_(1, 2), eigen_vectors_(2, 2), max_weight);
+    const auto final_timestamp = std::chrono::steady_clock::now();
+    RCLCPP_DEBUG(
+      rclcpp::get_logger("mcl_3dl"),
+      "PointCloudSamplerWithNormal::sample() computation time: %f[s] (Normal calculation: %f[s])",
+      std::chrono::duration<double>(final_timestamp - start_timestamp).count(),
+      std::chrono::duration<double>(compute_normal_timestamp - start_timestamp).count());
+    RCLCPP_DEBUG(
+      rclcpp::get_logger("mcl_3dl"), "Chosen eigen vector: (%f, %f, %f), max weight: %f",
+      eigen_vectors_(0, 2), eigen_vectors_(1, 2), eigen_vectors_(2, 2), max_weight);
     return output;
   }
 };
 
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_POINT_CLOUD_RANDOM_SAMPLERS_POINT_CLOUD_SAMPLER_WITH_NORMAL_H
+#endif  // MCL_3DL__POINT_CLOUD_RANDOM_SAMPLERS__POINT_CLOUD_SAMPLER_WITH_NORMAL_H_

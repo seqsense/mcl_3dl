@@ -27,29 +27,28 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "mcl_3dl/lidar_measurement_models/lidar_measurement_model_beam.h"
+
 #include <algorithm>
 #include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <pcl/point_types.h>
-#include <pcl_ros/point_cloud.h>
-
-#include <mcl_3dl/pf.h>
-#include <mcl_3dl/point_cloud_random_sampler.h>
-#include <mcl_3dl/point_types.h>
-#include <mcl_3dl/raycast.h>
-#include <mcl_3dl/raycasts/raycast_using_dda.h>
-#include <mcl_3dl/raycasts/raycast_using_kdtree.h>
-#include <mcl_3dl/vec3.h>
-
-#include <mcl_3dl/lidar_measurement_models/lidar_measurement_model_beam.h>
+#include "mcl_3dl/pf.h"
+#include "mcl_3dl/point_cloud_random_sampler.h"
+#include "mcl_3dl/point_types.h"
+#include "mcl_3dl/raycast.h"
+#include "mcl_3dl/raycasts/raycast_using_dda.h"
+#include "mcl_3dl/raycasts/raycast_using_kdtree.h"
+#include "mcl_3dl/vec3.h"
+#include "pcl/point_types.h"
+#include "pcl_conversions/pcl_conversions.h"
 
 namespace mcl_3dl
 {
 LidarMeasurementModelBeam::LidarMeasurementModelBeam(
-    const std::shared_ptr<LidarMeasurementModelBeamParameters>& params)
+  const std::shared_ptr<LidarMeasurementModelBeamParameters> & params)
 {
   params_ = params ? params : std::make_shared<LidarMeasurementModelBeamParameters>();
   refreshParameters();
@@ -66,55 +65,46 @@ void LidarMeasurementModelBeam::refreshParameters()
   beam_likelihood_ = std::pow(params_->beam_likelihood_min_, 1.0 / static_cast<float>(num_points_));
   sin_total_ref_ = sinf(params_->ang_total_ref_);
 
-  if (params_->use_raycast_using_dda_)
-  {
+  if (params_->use_raycast_using_dda_) {
     raycaster_ = std::make_shared<RaycastUsingDDA<PointType>>(
-        params_->map_grid_x_, params_->map_grid_y_, params_->map_grid_z_,
-        params_->dda_grid_size_, params_->ray_angle_half_, params_->hit_range_);
-  }
-  else
-  {
+      params_->map_grid_x_, params_->map_grid_y_, params_->map_grid_z_, params_->dda_grid_size_,
+      params_->ray_angle_half_, params_->hit_range_);
+  } else {
     raycaster_ = std::make_shared<RaycastUsingKDTree<PointType>>(
-        params_->map_grid_x_, params_->map_grid_y_, params_->map_grid_z_, params_->hit_range_);
+      params_->map_grid_x_, params_->map_grid_y_, params_->map_grid_z_, params_->hit_range_);
   }
 }
 
 void LidarMeasurementModelBeam::setGlobalLocalizationStatus(
-    const size_t num_particles,
-    const size_t current_num_particles)
+  const size_t num_particles, const size_t current_num_particles)
 {
-  if (current_num_particles <= num_particles)
-  {
+  if (current_num_particles <= num_particles) {
     num_points_ = params_->num_points_default_;
     return;
   }
   size_t num = params_->num_points_default_ * num_particles / current_num_particles;
-  if (num < params_->num_points_global_)
-    num = params_->num_points_global_;
+  if (num < params_->num_points_global_) num = params_->num_points_global_;
 
   num_points_ = num;
 }
 
 typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::Ptr
 LidarMeasurementModelBeam::filter(
-    const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr& pc,
-    const PointCloudRandomSampler<PointType>& sampler) const
+  const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr & pc,
+  const PointCloudRandomSampler<PointType> & sampler) const
 {
-  const auto local_points_filter = [this](const LidarMeasurementModelBase::PointType& p)
-  {
-    if (p.x * p.x + p.y * p.y > clip_far_sq_)
-      return true;
-    if (p.x * p.x + p.y * p.y < clip_near_sq_)
-      return true;
-    if (p.z < params_->clip_z_min_ || params_->clip_z_max_ < p.z)
-      return true;
+  const auto local_points_filter = [this](const LidarMeasurementModelBase::PointType & p) {
+    if (p.x * p.x + p.y * p.y > clip_far_sq_) return true;
+    if (p.x * p.x + p.y * p.y < clip_near_sq_) return true;
+    if (p.z < params_->clip_z_min_ || params_->clip_z_max_ < p.z) return true;
     return false;
   };
   pcl::PointCloud<LidarMeasurementModelBase::PointType>::Ptr pc_filtered(
-      new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
+    new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
   *pc_filtered = *pc;
   pc_filtered->erase(
-      std::remove_if(pc_filtered->begin(), pc_filtered->end(), local_points_filter), pc_filtered->end());
+    std::remove_if(pc_filtered->begin(), pc_filtered->end(), local_points_filter),
+    pc_filtered->end());
   pc_filtered->width = 1;
   pc_filtered->height = pc_filtered->points.size();
 
@@ -122,69 +112,54 @@ LidarMeasurementModelBeam::filter(
 }
 
 LidarMeasurementResult LidarMeasurementModelBeam::measure(
-    typename ChunkedKdtree<LidarMeasurementModelBase::PointType>::Ptr& kdtree,
-    const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr& pc,
-    const std::vector<Vec3>& origins,
-    const State6DOF& s) const
+  typename ChunkedKdtree<LidarMeasurementModelBase::PointType>::Ptr & kdtree,
+  const typename pcl::PointCloud<LidarMeasurementModelBase::PointType>::ConstPtr & pc,
+  const std::vector<Vec3> & origins, const State6DOF & s) const
 {
-  if (!pc)
-    return LidarMeasurementResult(1, 0);
-  if (pc->size() == 0)
-    return LidarMeasurementResult(1, 0);
+  if (!pc) return LidarMeasurementResult(1, 0);
+  if (pc->size() == 0) return LidarMeasurementResult(1, 0);
   pcl::PointCloud<LidarMeasurementModelBase::PointType>::Ptr pc_particle(
-      new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
+    new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
 
   float score_beam = 1.0;
   *pc_particle = *pc;
   s.transform(*pc_particle);
-  for (auto& p : pc_particle->points)
-  {
+  for (auto & p : pc_particle->points) {
     const int beam_header_id = p.label;
     typename mcl_3dl::Raycast<PointType>::CastResult point;
     const BeamStatus status =
-        getBeamStatus(kdtree, s.pos_ + s.rot_ * origins[beam_header_id], Vec3(p.x, p.y, p.z), point);
-    if ((status == BeamStatus::SHORT) || (!params_->add_penalty_short_only_mode_ && (status == BeamStatus::LONG)))
-    {
+      getBeamStatus(kdtree, s.pos_ + s.rot_ * origins[beam_header_id], Vec3(p.x, p.y, p.z), point);
+    if (
+      (status == BeamStatus::SHORT) ||
+      (!params_->add_penalty_short_only_mode_ && (status == BeamStatus::LONG))) {
       score_beam *= beam_likelihood_;
     }
   }
-  if (score_beam < params_->beam_likelihood_min_)
-    score_beam = params_->beam_likelihood_min_;
+  if (score_beam < params_->beam_likelihood_min_) score_beam = params_->beam_likelihood_min_;
 
   return LidarMeasurementResult(score_beam, 1.0);
 }
 
 LidarMeasurementModelBeam::BeamStatus LidarMeasurementModelBeam::getBeamStatus(
-    ChunkedKdtree<PointType>::Ptr& kdtree,
-    const Vec3& lidar_pos,
-    const Vec3& scan_pos,
-    typename mcl_3dl::Raycast<PointType>::CastResult& result) const
+  ChunkedKdtree<PointType>::Ptr & kdtree, const Vec3 & lidar_pos, const Vec3 & scan_pos,
+  typename mcl_3dl::Raycast<PointType>::CastResult & result) const
 {
   raycaster_->setRay(kdtree, lidar_pos, scan_pos);
-  while (raycaster_->getNextCastResult(result))
-  {
-    if (!result.collision_)
-      continue;
-    if (result.point_->label > params_->filter_label_max_)
-      continue;
+  while (raycaster_->getNextCastResult(result)) {
+    if (!result.collision_) continue;
+    if (result.point_->label > params_->filter_label_max_) continue;
     // reject total reflection
-    if (result.sin_angle_ > sin_total_ref_)
-    {
+    if (result.sin_angle_ > sin_total_ref_) {
       const float distance_from_point_sq = std::pow(scan_pos[0] - result.point_->x, 2) +
                                            std::pow(scan_pos[1] - result.point_->y, 2) +
                                            std::pow(scan_pos[2] - result.point_->z, 2);
 
-      if (distance_from_point_sq < hit_range_sq_)
-      {
+      if (distance_from_point_sq < hit_range_sq_) {
         return BeamStatus::HIT;
-      }
-      else
-      {
+      } else {
         return BeamStatus::SHORT;
       }
-    }
-    else
-    {
+    } else {
       return BeamStatus::TOTAL_REFLECTION;
     }
   }

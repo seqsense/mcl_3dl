@@ -27,12 +27,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <cstddef>
-#include <cmath>
-
 #include <gtest/gtest.h>
 
-#include <mcl_3dl/vec3.h>
+#include <cmath>
+#include <cstddef>
+
+#include "mcl_3dl/vec3.h"
 
 TEST(Vec3, Constructors)
 {
@@ -57,8 +57,7 @@ TEST(Vec3, Operators)
   ASSERT_TRUE(mcl_3dl::Vec3(1.0, 2.0, 3.0) == a);
   ASSERT_FALSE(mcl_3dl::Vec3(1.0, 2.0, 3.0) != a);
 
-  for (uint32_t i = 1; i < (1 << 3); i++)
-  {
+  for (uint32_t i = 1; i < (1 << 3); i++) {
     const float xp = (i & (1 << 0)) ? 0.1 : 0.0;
     const float yp = (i & (1 << 1)) ? 0.1 : 0.0;
     const float zp = (i & (1 << 2)) ? 0.1 : 0.0;
@@ -120,24 +119,16 @@ TEST(Vec3, Products)
 {
   // Check cross and dot products
   const int num_samples = 8;
-  const mcl_3dl::Vec3 samples[num_samples] =
-      {
-          mcl_3dl::Vec3(1.5, 2.5, 3.5),
-          mcl_3dl::Vec3(-0.5, 1.0, 1.0),
-          mcl_3dl::Vec3(0.5, -1.0, 2.0),
-          mcl_3dl::Vec3(0.5, 1.0, -2.0),
-          mcl_3dl::Vec3(-2.0, -5.0, 4.0),
-          mcl_3dl::Vec3(2.0, -5.0, -4.0),
-          mcl_3dl::Vec3(-2.0, 5.0, -4.0),
-          mcl_3dl::Vec3(-3.0, -1.0, -2.0),
-      };
+  const mcl_3dl::Vec3 samples[num_samples] = {
+    mcl_3dl::Vec3(1.5, 2.5, 3.5),   mcl_3dl::Vec3(-0.5, 1.0, 1.0),   mcl_3dl::Vec3(0.5, -1.0, 2.0),
+    mcl_3dl::Vec3(0.5, 1.0, -2.0),  mcl_3dl::Vec3(-2.0, -5.0, 4.0),  mcl_3dl::Vec3(2.0, -5.0, -4.0),
+    mcl_3dl::Vec3(-2.0, 5.0, -4.0), mcl_3dl::Vec3(-3.0, -1.0, -2.0),
+  };
 
-  for (int i = 0; i < num_samples; ++i)
-  {
-    for (int j = 0; j < num_samples; ++j)
-    {
-      const mcl_3dl::Vec3& a = samples[i];
-      const mcl_3dl::Vec3& b = samples[j];
+  for (int i = 0; i < num_samples; ++i) {
+    for (int j = 0; j < num_samples; ++j) {
+      const mcl_3dl::Vec3 & a = samples[i];
+      const mcl_3dl::Vec3 & b = samples[j];
 
       // Check dot products based on the distributive property
       ASSERT_LT((a - b).dot(a - b) - a.dot(a) - b.dot(b) + 2.0 * a.dot(b), 1e-6);
@@ -149,7 +140,7 @@ TEST(Vec3, Products)
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 

@@ -27,51 +27,42 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <vector>
-#include <string>
+#include "mcl_3dl/cloud_accum.h"
+
 #include <functional>
+#include <string>
+#include <vector>
 
-#include <ros/ros.h>
-#include <sensor_msgs/PointCloud2.h>
-
-#include <mcl_3dl/cloud_accum.h>
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
 
 namespace mcl_3dl
 {
 void CloudAccumulationLogicPassThrough::push(
-    const std::string& key,
-    const sensor_msgs::PointCloud2::ConstPtr& msg,
-    std::function<void()> process,
-    std::function<bool(const sensor_msgs::PointCloud2::ConstPtr&)> accumulate,
-    std::function<void()> clear)
+  const std::string & /*key*/, const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg,
+  std::function<void()> process,
+  std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &)> accumulate,
+  std::function<void()> clear)
 {
   clear();
-  if (accumulate(msg))
-    process();
+  if (accumulate(msg)) process();
 }
 
 void CloudAccumulationLogic::push(
-    const std::string& key,
-    const sensor_msgs::PointCloud2::ConstPtr& msg,
-    std::function<void()> process,
-    std::function<bool(const sensor_msgs::PointCloud2::ConstPtr&)> accumulate,
-    std::function<void()> clear)
+  const std::string & key, const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg,
+  std::function<void()> process,
+  std::function<bool(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> &)> accumulate,
+  std::function<void()> clear)
 {
   // If total count of the accumulated cloud exceeds limit,
   // skip checking frame_id and force processing.
-  if (keys_.size() < accum_max_)
-  {
-    if (keys_.size() == 0 || keys_.front() != key)
-    {
-      if (accumulate(msg))
-      {
-        if (keys_.size() == 0)
-          cnt_accum_ = 1;
+  if (keys_.size() < accum_max_) {
+    if (keys_.size() == 0 || keys_.front() != key) {
+      if (accumulate(msg)) {
+        if (keys_.size() == 0) cnt_accum_ = 1;
 
         keys_.push_back(key);
-      }
-      else
-      {
+      } else {
         clear();
         reset();
       }
@@ -80,15 +71,11 @@ void CloudAccumulationLogic::push(
 
     // Count number of clouds with the frame_id which was arrived
     // at first in this accumulation.
-    if (cnt_accum_ < accum_)
-    {
-      if (accumulate(msg))
-      {
+    if (cnt_accum_ < accum_) {
+      if (accumulate(msg)) {
         cnt_accum_++;
         keys_.push_back(key);
-      }
-      else
-      {
+      } else {
         clear();
         reset();
       }
@@ -97,13 +84,12 @@ void CloudAccumulationLogic::push(
 
     // Received (accum_cloud_ + 1) of clouds now.
     // Process already accumulated data and start next accumulation.
-  }
-  else
-  {
-    ROS_WARN(
-        "Number of the accumulated cloud exceeds limit. "
-        "Sensor with frame_id of %s may have been stopped.",
-        keys_.front().c_str());
+  } else {
+    RCLCPP_WARN(
+      rclcpp::get_logger("mcl_3dl"),
+      "Number of the accumulated cloud exceeds limit. "
+      "Sensor with frame_id of %s may have been stopped.",
+      keys_.front().c_str());
   }
 
   process();
@@ -111,8 +97,7 @@ void CloudAccumulationLogic::push(
   clear();
   reset();
 
-  if (accumulate(msg))
-  {
+  if (accumulate(msg)) {
     keys_.push_back(key);
     cnt_accum_++;
   }

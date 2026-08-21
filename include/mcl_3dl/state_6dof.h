@@ -27,22 +27,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MCL_3DL_STATE_6DOF_H
-#define MCL_3DL_STATE_6DOF_H
+#ifndef MCL_3DL__STATE_6DOF_H_
+#define MCL_3DL__STATE_6DOF_H_
 
 #include <algorithm>
 #include <cassert>
 #include <vector>
 
-#include <ros/ros.h>
-
-#include <mcl_3dl/pf.h>
-#include <mcl_3dl/point_types.h>
-#include <mcl_3dl/quat.h>
-#include <mcl_3dl/vec3.h>
-
-#include <mcl_3dl/noise_generator_base.h>
-#include <mcl_3dl/noise_generators/diagonal_noise_generator.h>
+#include "mcl_3dl/noise_generator_base.h"
+#include "mcl_3dl/noise_generators/diagonal_noise_generator.h"
+#include "mcl_3dl/pf.h"
+#include "mcl_3dl/point_types.h"
+#include "mcl_3dl/quat.h"
+#include "mcl_3dl/vec3.h"
+#include "rclcpp/rclcpp.hpp"
 
 namespace mcl_3dl
 {
@@ -62,13 +60,8 @@ public:
   {
   public:
     mcl_3dl::Vec3 v_;
-    RPYVec()
-    {
-    }
-    explicit RPYVec(const mcl_3dl::Vec3& v)
-    {
-      v_ = v;
-    }
+    RPYVec() {}
+    explicit RPYVec(const mcl_3dl::Vec3 & v) { v_ = v; }
     RPYVec(const float r, const float p, const float y)
     {
       v_.x_ = r;
@@ -77,10 +70,9 @@ public:
     }
   };
   RPYVec rpy_;
-  float& operator[](const size_t i) override
+  float & operator[](const size_t i) override
   {
-    switch (i)
-    {
+    switch (i) {
       case 0:
         return pos_.x_;
       case 1:
@@ -114,8 +106,7 @@ public:
   }
   float operator[](const size_t i) const
   {
-    switch (i)
-    {
+    switch (i) {
       case 0:
         return pos_.x_;
       case 1:
@@ -147,36 +138,21 @@ public:
     }
     return 0;
   }
-  size_t size() const override
-  {
-    return 13;
-  }
-  void normalize() override
-  {
-    rot_.normalize();
-  }
-  size_t covDimension() const override
-  {
-    return 6;
-  }
-  float covElement(const State6DOF& e, const size_t j, const size_t k)
+  size_t size() const override { return 13; }
+  void normalize() override { rot_.normalize(); }
+  size_t covDimension() const override { return 6; }
+  float covElement(const State6DOF & e, const size_t j, const size_t k)
   {
     const mcl_3dl::Vec3 exp_rpy = e.isDiff() ? e.rpy_.v_ : e.rot_.getRPY();
     const mcl_3dl::Vec3 rpy = isDiff() ? rpy_.v_ : rot_.getRPY();
     float val = 1.0f, diff = 0.0f;
-    for (size_t i : {j, k})
-    {
-      if (i < 3)
-      {
+    for (size_t i : {j, k}) {
+      if (i < 3) {
         diff = (*this)[i] - e[i];
-      }
-      else
-      {
+      } else {
         diff = rpy[i - 3] - exp_rpy[i - 3];
-        while (diff > M_PI)
-          diff -= 2 * M_PI;
-        while (diff < -M_PI)
-          diff += 2 * M_PI;
+        while (diff > M_PI) diff -= 2 * M_PI;
+        while (diff < -M_PI) diff += 2 * M_PI;
       }
       val *= diff;
     }
@@ -189,7 +165,7 @@ public:
     odom_err_integ_lin_ = mcl_3dl::Vec3(0.0, 0.0, 0.0);
     odom_err_integ_ang_ = mcl_3dl::Vec3(0.0, 0.0, 0.0);
   }
-  State6DOF(const mcl_3dl::Vec3& pos, const mcl_3dl::Quat& rot)
+  State6DOF(const mcl_3dl::Vec3 & pos, const mcl_3dl::Quat & rot)
   {
     pos_ = pos;
     rot_ = rot;
@@ -198,7 +174,7 @@ public:
     odom_err_integ_ang_ = mcl_3dl::Vec3(0.0, 0.0, 0.0);
     diff_ = false;
   }
-  State6DOF(const mcl_3dl::Vec3& pos, const mcl_3dl::Vec3& rpy)
+  State6DOF(const mcl_3dl::Vec3 & pos, const mcl_3dl::Vec3 & rpy)
   {
     pos_ = pos;
     rpy_ = RPYVec(rpy);
@@ -207,16 +183,12 @@ public:
     odom_err_integ_ang_ = mcl_3dl::Vec3(0.0, 0.0, 0.0);
     diff_ = true;
   }
-  bool isDiff() const
-  {
-    return diff_;
-  }
+  bool isDiff() const { return diff_; }
   template <typename PointType>
-  void transform(pcl::PointCloud<PointType>& pc) const
+  void transform(pcl::PointCloud<PointType> & pc) const
   {
     const auto r = rot_.normalized();
-    for (auto& p : pc.points)
-    {
+    for (auto & p : pc.points) {
       const Vec3 t = r * Vec3(p.x, p.y, p.z) + pos_;
       p.x = t.x_;
       p.y = t.y_;
@@ -224,49 +196,44 @@ public:
     }
   }
   template <typename T, typename RANDOM_ENGINE, typename NOISE_GEN>
-  static State6DOF generateNoise(RANDOM_ENGINE& engine, const NOISE_GEN& gen)
+  static State6DOF generateNoise(RANDOM_ENGINE & engine, const NOISE_GEN & gen)
   {
-    if (gen.getDimension() != 6)
-    {
-      ROS_ERROR("Dimension of noise must be 6. Passed: %lu", gen.getDimension());
+    if (gen.getDimension() != 6) {
+      RCLCPP_ERROR(
+        rclcpp::get_logger("mcl_3dl"), "Dimension of noise must be 6. Passed: %lu",
+        gen.getDimension());
     }
     State6DOF noise;
     const std::vector<float> org_noise = gen(engine);
-    const std::vector<float>& mean = gen.getMean();
-    for (size_t i = 0; i < 3; i++)
-    {
+    const std::vector<float> & mean = gen.getMean();
+    for (size_t i = 0; i < 3; i++) {
       noise[i] = noise[i + 7] = org_noise[i];
     }
     mcl_3dl::Vec3 rpy_noise;
-    for (size_t i = 0; i < 3; i++)
-    {
+    for (size_t i = 0; i < 3; i++) {
       rpy_noise[i] = org_noise[i + 3];
       noise[i + 10] = org_noise[i + 3] - mean[i + 3];
     }
     noise.rot_ = mcl_3dl::Quat(rpy_noise);
     return noise;
   }
-  State6DOF operator+(const State6DOF& a) const
+  State6DOF operator+(const State6DOF & a) const
   {
     State6DOF in = a;
     State6DOF ret;
-    for (size_t i = 0; i < size(); i++)
-    {
-      if (3 <= i && i <= 6)
-        continue;
+    for (size_t i = 0; i < size(); i++) {
+      if (3 <= i && i <= 6) continue;
       ret[i] = (*this)[i] + in[i];
     }
     ret.rot_ = a.rot_ * rot_;
     return ret;
   }
-  State6DOF operator-(const State6DOF& a) const
+  State6DOF operator-(const State6DOF & a) const
   {
     State6DOF in = a;
     State6DOF ret;
-    for (size_t i = 0; i < size(); i++)
-    {
-      if (3 <= i && i <= 6)
-        continue;
+    for (size_t i = 0; i < size(); i++) {
+      if (3 <= i && i <= 6) continue;
       ret[i] = (*this)[i] - in[i];
     }
     ret.rot_ = a.rot_.inv() * rot_;
@@ -276,39 +243,34 @@ public:
 
 template <>
 template <>
-inline void NoiseGeneratorBase<float>::setMean(const State6DOF& mean)
+inline void NoiseGeneratorBase<float>::setMean(const State6DOF & mean)
 {
   mean_.resize(6);
-  if (mean.isDiff())
-  {
-    ROS_ERROR("Failed to generate noise. mean must be mcl_3dl::Quat.");
+  if (mean.isDiff()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("mcl_3dl"), "Failed to generate noise. mean must be mcl_3dl::Quat.");
   }
-  for (size_t i = 0; i < 3; i++)
-  {
+  for (size_t i = 0; i < 3; i++) {
     mean_[i] = mean[i];
   }
   const Vec3 rpy = mean.rot_.getRPY();
-  for (size_t i = 0; i < 3; i++)
-  {
+  for (size_t i = 0; i < 3; i++) {
     mean_[i + 3] = rpy[i];
   }
 }
 
 template <>
 template <>
-inline void DiagonalNoiseGenerator<float>::setSigma(const State6DOF& sigma)
+inline void DiagonalNoiseGenerator<float>::setSigma(const State6DOF & sigma)
 {
   sigma_.resize(6);
-  if (!sigma.isDiff())
-  {
-    ROS_ERROR("Failed to generate noise. sigma must be rpy vec.");
+  if (!sigma.isDiff()) {
+    RCLCPP_ERROR(rclcpp::get_logger("mcl_3dl"), "Failed to generate noise. sigma must be rpy vec.");
   }
-  for (size_t i = 0; i < 3; i++)
-  {
+  for (size_t i = 0; i < 3; i++) {
     sigma_[i] = sigma[i];
   }
-  for (size_t i = 0; i < 3; i++)
-  {
+  for (size_t i = 0; i < 3; i++) {
     sigma_[i + 3] = sigma.rpy_.v_[i];
   }
 }
@@ -321,13 +283,11 @@ protected:
 
 public:
   ParticleWeightedMeanQuat()
-    : ParticleWeightedMean()
-    , front_sum_(0.0, 0.0, 0.0)
-    , up_sum_(0.0, 0.0, 0.0)
+  : ParticleWeightedMean(), front_sum_(0.0, 0.0, 0.0), up_sum_(0.0, 0.0, 0.0)
   {
   }
 
-  void add(const State6DOF& s, const float prob)
+  void add(const State6DOF & s, const float prob)
   {
     p_sum_ += prob;
 
@@ -348,11 +308,8 @@ public:
     return State6DOF(e_.pos_ / p_sum_, mcl_3dl::Quat(front_sum_, up_sum_));
   }
 
-  float getTotalProbability()
-  {
-    return p_sum_;
-  }
+  float getTotalProbability() { return p_sum_; }
 };
 }  // namespace mcl_3dl
 
-#endif  // MCL_3DL_STATE_6DOF_H
+#endif  // MCL_3DL__STATE_6DOF_H_

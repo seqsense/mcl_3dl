@@ -28,12 +28,12 @@
  */
 
 #define _USE_MATH_DEFINES
+#include <gtest/gtest.h>
+
 #include <cmath>
 #include <cstddef>
 
-#include <mcl_3dl/quat.h>
-
-#include <gtest/gtest.h>
+#include "mcl_3dl/quat.h"
 
 TEST(Quat, Constractors)
 {
@@ -51,8 +51,7 @@ TEST(Quat, Constractors)
   ASSERT_TRUE(b.w_ == 4.0);
 
   // Test RPY and angle-axis style constructor
-  for (int i = 0; i < 3; ++i)
-  {
+  for (int i = 0; i < 3; ++i) {
     const float ang = M_PI / 2.0;
     const float r = (i == 0) ? 1.0 : 0.0;
     const float p = (i == 1) ? 1.0 : 0.0;
@@ -92,15 +91,12 @@ TEST(Quat, Constractors)
   }
 
   // Test forward up style constructor
-  for (int i = 0; i < 3; ++i)
-  {
+  for (int i = 0; i < 3; ++i) {
     const mcl_3dl::Vec3 fw((i == 0) ? 1.0 : 0.0, (i == 1) ? 1.0 : 0.0, (i == 2) ? 1.0 : 0.0);
-    for (int j = 0; j < 3; ++j)
-    {
+    for (int j = 0; j < 3; ++j) {
       const mcl_3dl::Vec3 up((j == 0) ? 1.0 : 0.0, (j == 1) ? 1.0 : 0.0, (j == 2) ? 1.0 : 0.0);
 
-      if (fw == up)
-        continue;
+      if (fw == up) continue;
 
       const mcl_3dl::Quat q(fw, up);
 
@@ -126,8 +122,7 @@ TEST(Quat, Operators)
   ASSERT_TRUE(mcl_3dl::Quat(1.0, 2.0, 3.0, 4.0) == a);
   ASSERT_FALSE(mcl_3dl::Quat(1.0, 2.0, 3.0, 4.0) != a);
 
-  for (uint32_t i = 1; i < (1 << 4); ++i)
-  {
+  for (uint32_t i = 1; i < (1 << 4); ++i) {
     const float xp = (i & (1 << 0)) ? 0.1 : 0.0;
     const float yp = (i & (1 << 1)) ? 0.1 : 0.0;
     const float zp = (i & (1 << 2)) ? 0.1 : 0.0;
@@ -176,21 +171,19 @@ TEST(Quat, Products)
 {
   // Check cross and dot products
   const int num_samples = 8;
-  const mcl_3dl::Quat samples[num_samples] =
-      {
-          mcl_3dl::Quat(mcl_3dl::Vec3(1.5, 2.5, 3.5), 0.5),
-          mcl_3dl::Quat(mcl_3dl::Vec3(-0.5, 1.0, 1.0), 1.0),
-          mcl_3dl::Quat(mcl_3dl::Vec3(0.5, -1.0, 2.0), 1.5),
-          mcl_3dl::Quat(mcl_3dl::Vec3(0.5, 1.0, -2.0), 2.0),
-          mcl_3dl::Quat(mcl_3dl::Vec3(-2.0, -5.0, 4.0), 2.5),
-          mcl_3dl::Quat(mcl_3dl::Vec3(2.0, -5.0, -4.0), -1.0),
-          mcl_3dl::Quat(mcl_3dl::Vec3(-2.0, 5.0, -4.0), -1.5),
-          mcl_3dl::Quat(mcl_3dl::Vec3(-3.0, -1.0, -2.0), -2.0),
-      };
+  const mcl_3dl::Quat samples[num_samples] = {
+    mcl_3dl::Quat(mcl_3dl::Vec3(1.5, 2.5, 3.5), 0.5),
+    mcl_3dl::Quat(mcl_3dl::Vec3(-0.5, 1.0, 1.0), 1.0),
+    mcl_3dl::Quat(mcl_3dl::Vec3(0.5, -1.0, 2.0), 1.5),
+    mcl_3dl::Quat(mcl_3dl::Vec3(0.5, 1.0, -2.0), 2.0),
+    mcl_3dl::Quat(mcl_3dl::Vec3(-2.0, -5.0, 4.0), 2.5),
+    mcl_3dl::Quat(mcl_3dl::Vec3(2.0, -5.0, -4.0), -1.0),
+    mcl_3dl::Quat(mcl_3dl::Vec3(-2.0, 5.0, -4.0), -1.5),
+    mcl_3dl::Quat(mcl_3dl::Vec3(-3.0, -1.0, -2.0), -2.0),
+  };
 
   // Check inverse
-  for (int i = 0; i < num_samples; ++i)
-  {
+  for (int i = 0; i < num_samples; ++i) {
     const mcl_3dl::Quat inv = samples[i].inv();
     const mcl_3dl::Quat ident0 = inv * samples[i];
     const mcl_3dl::Quat ident1 = samples[i] * inv;
@@ -206,16 +199,14 @@ TEST(Quat, Products)
   }
 
   // Check rotate axis
-  for (int i = 0; i < num_samples; ++i)
-  {
-    for (int j = 0; j < num_samples; ++j)
-    {
+  for (int i = 0; i < num_samples; ++i) {
+    for (int j = 0; j < num_samples; ++j) {
       mcl_3dl::Vec3 a_axis;
       float a_ang;
       samples[i].getAxisAng(a_axis, a_ang);
 
       mcl_3dl::Quat a(a_axis, a_ang);
-      const mcl_3dl::Quat& b = samples[j];
+      const mcl_3dl::Quat & b = samples[j];
 
       const mcl_3dl::Vec3 rotated_axis = b * a_axis;
       a.rotateAxis(b);
@@ -233,35 +224,24 @@ TEST(Quat, Products)
 
   // Check vector rotation
   const int num_vecs = 3;
-  const mcl_3dl::Vec3 v[num_vecs] =
-      {
-          mcl_3dl::Vec3(1.0, 0.0, 0.0),
-          mcl_3dl::Vec3(0.0, 1.0, 0.0),
-          mcl_3dl::Vec3(0.0, 0.0, 1.0),
-      };
+  const mcl_3dl::Vec3 v[num_vecs] = {
+    mcl_3dl::Vec3(1.0, 0.0, 0.0),
+    mcl_3dl::Vec3(0.0, 1.0, 0.0),
+    mcl_3dl::Vec3(0.0, 0.0, 1.0),
+  };
   const int num_rots = 3;
-  const mcl_3dl::Quat r[num_rots] =
-      {
-          mcl_3dl::Quat(mcl_3dl::Vec3(1.0, 0.0, 0.0), M_PI / 2.0),
-          mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 1.0, 0.0), -M_PI / 2.0),
-          mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), -M_PI / 2.0),
-      };
-  const mcl_3dl::Vec3 v_ans[3][3] =
-      {
-          mcl_3dl::Vec3(1.0, 0.0, 0.0),
-          mcl_3dl::Vec3(0.0, 0.0, 1.0),
-          mcl_3dl::Vec3(0.0, -1.0, 0.0),
-          mcl_3dl::Vec3(0.0, 0.0, 1.0),
-          mcl_3dl::Vec3(0.0, 1.0, 0.0),
-          mcl_3dl::Vec3(-1.0, 0.0, 0.0),
-          mcl_3dl::Vec3(0.0, -1.0, 0.0),
-          mcl_3dl::Vec3(1.0, 0.0, 0.0),
-          mcl_3dl::Vec3(0.0, 0.0, 1.0),
-      };
-  for (int i = 0; i < num_vecs; ++i)
-  {
-    for (int j = 0; j < num_rots; ++j)
-    {
+  const mcl_3dl::Quat r[num_rots] = {
+    mcl_3dl::Quat(mcl_3dl::Vec3(1.0, 0.0, 0.0), M_PI / 2.0),
+    mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 1.0, 0.0), -M_PI / 2.0),
+    mcl_3dl::Quat(mcl_3dl::Vec3(0.0, 0.0, 1.0), -M_PI / 2.0),
+  };
+  const mcl_3dl::Vec3 v_ans[3][3] = {
+    mcl_3dl::Vec3(1.0, 0.0, 0.0),  mcl_3dl::Vec3(0.0, 0.0, 1.0), mcl_3dl::Vec3(0.0, -1.0, 0.0),
+    mcl_3dl::Vec3(0.0, 0.0, 1.0),  mcl_3dl::Vec3(0.0, 1.0, 0.0), mcl_3dl::Vec3(-1.0, 0.0, 0.0),
+    mcl_3dl::Vec3(0.0, -1.0, 0.0), mcl_3dl::Vec3(1.0, 0.0, 0.0), mcl_3dl::Vec3(0.0, 0.0, 1.0),
+  };
+  for (int i = 0; i < num_vecs; ++i) {
+    for (int j = 0; j < num_rots; ++j) {
       const mcl_3dl::Vec3 result = r[j] * v[i];
       ASSERT_LT(fabs(result.x_ - v_ans[j][i].x_), 1e-6);
       ASSERT_LT(fabs(result.y_ - v_ans[j][i].y_), 1e-6);
@@ -269,12 +249,10 @@ TEST(Quat, Products)
     }
   }
 
-  for (int i = 0; i < num_samples; ++i)
-  {
-    for (int j = 0; j < num_samples; ++j)
-    {
-      const mcl_3dl::Quat& a = samples[i];
-      const mcl_3dl::Quat& b = samples[j];
+  for (int i = 0; i < num_samples; ++i) {
+    for (int j = 0; j < num_samples; ++j) {
+      const mcl_3dl::Quat & a = samples[i];
+      const mcl_3dl::Quat & b = samples[j];
 
       // Check dot products based on the distributive property
       ASSERT_LT((a - b).dot(a - b) - a.dot(a) - b.dot(b) + 2.0 * a.dot(b), 1e-6);
@@ -290,7 +268,7 @@ TEST(Quat, Products)
   }
 }
 
-int main(int argc, char** argv)
+int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
 
