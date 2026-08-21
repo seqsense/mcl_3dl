@@ -135,15 +135,12 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
 
   add_definitions(-DPCL_NO_PRECOMPILE)
 
-  if("$ENV{ROS_DISTRO}" STREQUAL "humble" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
-      AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15)
-    # GCC 15 segfaults (ICE in the strlen pass' printf handling) while
-    # instantiating humble's rclcpp/service.hpp with coverage instrumentation.
-    # Skip that printf analysis entirely; it only powers the
-    # -Wformat-overflow/-Wformat-truncation diagnostics and the sprintf
-    # return-value optimization.
-    add_compile_options(
-      -fno-printf-return-value -Wno-format-overflow -Wno-format-truncation)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15)
+    # GCC 15 crashes (ICE, "during GIMPLE pass: strlen") while instantiating
+    # rclcpp/service.hpp with coverage instrumentation, which is how CI builds.
+    # Suppressing the pass' warnings is not enough - it still crashed while
+    # emitting one - so the pass itself has to go.
+    add_compile_options(-fno-optimize-strlen)
   endif()
 
   ament_auto_add_library(mcl_3dl_engine SHARED
