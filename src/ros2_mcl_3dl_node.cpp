@@ -403,7 +403,8 @@ private:
         engine_.processCloud(msg);
       });
     sub_mapcloud_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-      "mapcloud", 1, [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr & msg) {
+      "mapcloud", rclcpp::QoS(1).transient_local(),
+      [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr & msg) {
         engine_.processMapCloud(msg);
       });
     sub_mapcloud_update_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
