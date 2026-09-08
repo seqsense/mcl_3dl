@@ -4,6 +4,7 @@ from typing import Tuple
 import unittest
 
 from launch import LaunchDescription
+from launch.actions import TimerAction
 from launch.launch_description_entity import LaunchDescriptionEntity
 from launch_ros.actions import Node
 import launch_testing
@@ -32,7 +33,9 @@ def generate_test_description() -> Tuple[LaunchDescription, dict[str, LaunchDesc
     )
 
     return LaunchDescription([
-        mcl_3dl_node,
+        # mcl_3dl starts after the gtest has published the map, so that the
+        # map is always published before mcl_3dl subscribes.
+        TimerAction(period=3.0, actions=[mcl_3dl_node]),
         gtest_node,
         ReadyToTest(),
     ]), {'gtest_node': gtest_node}
