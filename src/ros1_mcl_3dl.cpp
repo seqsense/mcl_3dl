@@ -31,6 +31,7 @@
 #include <string>
 #include <vector>
 
+#include "diagnostic_msgs/DiagnosticStatus.h"
 #include "diagnostic_updater/diagnostic_updater.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"

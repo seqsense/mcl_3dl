@@ -35,6 +35,7 @@
 #include <string>
 #include <vector>
 
+#include "diagnostic_msgs/msg/diagnostic_status.hpp"
 #include "diagnostic_updater/diagnostic_updater.hpp"
 #include "geometry_msgs/msg/pose_array.hpp"
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
