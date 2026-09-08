@@ -17,6 +17,7 @@ if($ENV{ROS_VERSION} EQUAL 1)
     tf2_ros
     tf2_sensor_msgs
 
+    diagnostic_msgs
     diagnostic_updater
     dynamic_reconfigure
     geometry_msgs

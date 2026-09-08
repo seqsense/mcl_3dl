@@ -25,6 +25,7 @@
   <depend condition="$ROS_VERSION == 2">diagnostic_updater</depend>
   <depend condition="$ROS_VERSION == 2">std_srvs</depend>
 
+  <depend>diagnostic_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>pcl_conversions</depend>
