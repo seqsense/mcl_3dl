@@ -402,13 +402,11 @@ private:
       "cloud", cloud_queue_size, [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr & msg) {
         engine_.processCloud(msg);
       });
-    const bool mapcloud_transient_local =
-      this->declare_parameter("mapcloud_transient_local", true);
+    const bool mapcloud_transient_local = this->declare_parameter("mapcloud_transient_local", true);
     const auto mapcloud_qos =
       mapcloud_transient_local ? rclcpp::QoS(1).transient_local() : rclcpp::QoS(1);
     sub_mapcloud_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-      "mapcloud", mapcloud_qos,
-      [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr & msg) {
+      "mapcloud", mapcloud_qos, [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr & msg) {
         engine_.processMapCloud(msg);
       });
     sub_mapcloud_update_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
