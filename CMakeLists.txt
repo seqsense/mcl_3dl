@@ -342,6 +342,14 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     install(TARGETS ros2_test_expansion_resetting DESTINATION lib/${PROJECT_NAME})
     mcl_3dl_add_launch_test(test/tests/test_expansion_resetting_launch.py TIMEOUT 90)
 
+    # map_before_subscribe
+    ament_add_gtest_executable(ros2_test_map_before_subscribe test/src/ros2_test_map_before_subscribe.cpp)
+    target_include_directories(ros2_test_map_before_subscribe PRIVATE include)
+    ament_target_dependencies(ros2_test_map_before_subscribe rclcpp sensor_msgs)
+    target_compile_options(ros2_test_map_before_subscribe PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
+    install(TARGETS ros2_test_map_before_subscribe DESTINATION lib/${PROJECT_NAME})
+    mcl_3dl_add_launch_test(test/tests/test_map_before_subscribe_launch.py TIMEOUT 60)
+
     # beam_label
     ament_add_gtest_executable(ros2_test_beam_label test/src/ros2_test_beam_label.cpp)
     target_include_directories(ros2_test_beam_label PRIVATE include)
