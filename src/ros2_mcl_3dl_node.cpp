@@ -475,10 +475,10 @@ private:
 
   void setupTimers()
   {
-    map_update_timer_ = this->create_wall_timer(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(
-        params_.map_update_interval_->seconds() +
-        params_.map_update_interval_->nanoseconds() * 1e-9)),
+    // On the node clock, as the ROS 1 nh_.createTimer() was: the interval is a
+    // map-update period, which a simulated clock has to pace.
+    map_update_timer_ = rclcpp::create_timer(
+      this, this->get_clock(), *params_.map_update_interval_,
       [this]() { engine_.mapUpdateTimer(); });
   }
 
