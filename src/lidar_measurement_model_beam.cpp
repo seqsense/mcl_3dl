@@ -99,16 +99,15 @@ LidarMeasurementModelBeam::filter(
     if (p.z < params_->clip_z_min_ || params_->clip_z_max_ < p.z) return true;
     return false;
   };
-  pcl::PointCloud<LidarMeasurementModelBase::PointType>::Ptr pc_filtered(
-    new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
-  *pc_filtered = *pc;
-  pc_filtered->erase(
-    std::remove_if(pc_filtered->begin(), pc_filtered->end(), local_points_filter),
-    pc_filtered->end());
-  pc_filtered->width = 1;
-  pc_filtered->height = pc_filtered->points.size();
+  // Named rather than copied out: the sampler may have worked something out
+  // about this cloud that it can only reuse if it is still the same cloud.
+  std::vector<size_t> indices;
+  indices.reserve(pc->points.size());
+  for (size_t i = 0; i < pc->points.size(); i++) {
+    if (!local_points_filter(pc->points[i])) indices.push_back(i);
+  }
 
-  return sampler.sample(pc_filtered, num_points_);
+  return sampler.sample(pc, indices, num_points_);
 }
 
 LidarMeasurementResult LidarMeasurementModelBeam::measure(

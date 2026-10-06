@@ -153,6 +153,9 @@ public:
   /// The Parameters object must outlive the engine.
   bool configure(Parameters & params);
 
+  /// Estimate a normal for every map point, for the sampler to weigh with.
+  void updateMapNormals();
+
   /// Process incoming map pointcloud
   void processMapCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg);
 
@@ -305,6 +308,7 @@ protected:
 
   pcl::PointCloud<PointType>::Ptr pc_map_;
   pcl::PointCloud<PointType>::Ptr pc_map2_;
+  pcl::PointCloud<pcl::Normal>::ConstPtr map_normals_;
   pcl::PointCloud<PointType>::Ptr pc_update_;
   pcl::PointCloud<PointType>::Ptr pc_all_accum_;
   ChunkedKdtree<PointType>::Ptr kdtree_;

@@ -226,6 +226,8 @@ private:
         this->declare_parameter("random_sampler_with_normal.max_weight", 5.0);
       params_.random_sampler_with_normal_params_->normal_search_range_ =
         this->declare_parameter("random_sampler_with_normal.normal_search_range", 0.4);
+      params_.random_sampler_with_normal_params_->pool_ratio_ = static_cast<size_t>(
+        std::max<int64_t>(0, this->declare_parameter("random_sampler_with_normal.pool_ratio", 10)));
     }
 
     // Likelihood model parameters

@@ -44,6 +44,30 @@ class PointCloudRandomSampler
 public:
   virtual typename pcl::PointCloud<POINT_TYPE>::Ptr sample(
     const typename pcl::PointCloud<POINT_TYPE>::ConstPtr & pc, const size_t num) const = 0;
+
+  /// Draw from the points of `pc` named by `indices`.
+  ///
+  /// The measurement models clip the same cloud in different ways, so they used
+  /// to hand a copy of what survived. A sampler that looks at the geometry --
+  /// PointCloudSamplerWithNormal -- then had to work that geometry out once per
+  /// model. Naming a subset of one cloud lets it be worked out once per cycle
+  /// instead, and a sampler that does not care keeps the default.
+  virtual typename pcl::PointCloud<POINT_TYPE>::Ptr sample(
+    const typename pcl::PointCloud<POINT_TYPE>::ConstPtr & pc, const std::vector<size_t> & indices,
+    const size_t num) const
+  {
+    typename pcl::PointCloud<POINT_TYPE>::Ptr subset(new pcl::PointCloud<POINT_TYPE>);
+    subset->header = pc->header;
+    subset->points.reserve(indices.size());
+    for (const size_t i : indices) subset->push_back(pc->points[i]);
+    subset->width = 1;
+    subset->height = subset->points.size();
+    return sample(subset, num);
+  }
+
+  /// The cloud the models will name subsets of, given once per cycle before
+  /// they do. A sampler that derives nothing from the cloud ignores it.
+  virtual void setInputCloud(const typename pcl::PointCloud<POINT_TYPE>::ConstPtr & /*pc*/) {}
   virtual void setParticleStatistics(
     const State6DOF & /*mean*/, const std::vector<State6DOF> & /*covariances*/)
   {

@@ -61,7 +61,7 @@ target_link_libraries(test_noise_generator ${catkin_LIBRARIES})
 target_compile_options(test_noise_generator PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 
 catkin_add_gtest(test_point_cloud_random_sampler_with_normal src/test_point_cloud_random_sampler_with_normal.cpp)
-target_link_libraries(test_point_cloud_random_sampler_with_normal ${catkin_LIBRARIES})
+target_link_libraries(test_point_cloud_random_sampler_with_normal ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_compile_options(test_point_cloud_random_sampler_with_normal PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 add_dependencies(test_point_cloud_random_sampler_with_normal ${PROJECT_NAME}_gencfg)
 

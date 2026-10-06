@@ -63,6 +63,9 @@ public:
   double max_weight_ratio_;
   double max_weight_;
   double normal_search_range_;
+  /// How many candidates to weigh per point kept, when the normals come
+  /// from the map and each one costs a query.
+  size_t pool_ratio_ = 10;
 };
 
 class LidarMeasurementModelLikelihoodParameters

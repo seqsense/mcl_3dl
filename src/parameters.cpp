@@ -204,6 +204,9 @@ bool Parameters::load(ros::NodeHandle & pnh)
     rs_pnh.param("max_weight", random_sampler_with_normal_params_->max_weight_, 5.0);
     rs_pnh.param(
       "normal_search_range", random_sampler_with_normal_params_->normal_search_range_, 0.4);
+    int pool_ratio;
+    rs_pnh.param("pool_ratio", pool_ratio, 10);
+    random_sampler_with_normal_params_->pool_ratio_ = static_cast<size_t>(std::max(0, pool_ratio));
   }
 
   {

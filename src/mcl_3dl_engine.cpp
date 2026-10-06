@@ -45,6 +45,8 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
 #include "pcl/common/transforms.h"
+#include "pcl/features/normal_3d.h"
+#include "pcl/search/kdtree.h"
 #include "pcl_conversions/pcl_conversions.h"
 #include "visualization_msgs/msg/marker.hpp"
 #ifdef IS_ROS1_BUILD
@@ -141,6 +143,38 @@ bool MCL3dlEngine::configure(Parameters & params)
   kdtree_->setPointRepresentation(point_rep_);
 
   return true;
+}
+
+// Normals for the map, once per map rather than per cycle.
+//
+// PointCloudSamplerWithNormal weighs a scan point by the direction of the
+// surface it sits on, and it used to estimate that from the scan -- a kd-tree
+// built and thrown away every cycle, which is where mcl_3dl spent most of its
+// time. The map holds the same surfaces, densely and unchanging, so its
+// normals can be worked out once, when it arrives.
+void MCL3dlEngine::updateMapNormals()
+{
+  if (!params_->use_random_sampler_with_normal_ || !pc_map2_) return;
+
+  const auto ts = boost::chrono::high_resolution_clock::now();
+  pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+  pcl::NormalEstimation<PointType, pcl::Normal> ne;
+  pcl::search::KdTree<PointType>::Ptr tree(new pcl::search::KdTree<PointType>());
+  ne.setInputCloud(pc_map2_);
+  ne.setSearchMethod(tree);
+  ne.setRadiusSearch(params_->random_sampler_with_normal_params_->normal_search_range_);
+  ne.compute(*normals);
+  map_normals_ = normals;
+  // The sampler looks normals up in this same tree rather than in kdtree_: it
+  // is the one the normals were estimated with, and it carries no
+  // dist_weight_*, so normal_search_range keeps meaning metres on every axis.
+  if (sampler_) {
+    static_cast<PointCloudSamplerWithNormal<PointType> *>(sampler_.get())
+      ->setMap(tree, map_normals_);
+  }
+  RCLCPP_INFO(
+    logger_, "map normals: %d points, %0.3f sec.", static_cast<int>(normals->points.size()),
+    boost::chrono::duration<float>(boost::chrono::high_resolution_clock::now() - ts).count());
 }
 
 void MCL3dlEngine::processMapCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg)
@@ -377,6 +411,10 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     const std::vector<State6DOF> prev_cov = pf_->covariance(1.0, cov_ratio);
     sampler_->setParticleStatistics(prev_mean, prev_cov);
   }
+
+  // Once per cycle, not once per model: working the geometry out is what the
+  // sampler spends its time on.
+  sampler_->setInputCloud(pc_local_full);
 
   std::map<std::string, pcl::PointCloud<PointType>::Ptr> pc_locals;
   for (const auto & lm : lidar_measurements_) {
@@ -1145,6 +1183,7 @@ MapUpdateResult MCL3dlEngine::mapUpdateTimer()
       pc_map2_ = pc_map_;
     }
     kdtree_->setInputCloud(pc_map2_);
+    updateMapNormals();
 
     sensor_msgs::msg::PointCloud2 out;
     pcl::toROSMsg(*pc_map2_, out);
