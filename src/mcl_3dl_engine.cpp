@@ -371,11 +371,23 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     RCLCPP_ERROR(logger_, "MCL measure function is called without available pointcloud");
     return;
   }
-  const std_msgs::msg::Header & header = pc_accum_header_.back();
+  // The instant the whole measurement is expressed at.
+  //
+  // The clouds are accumulated in the odom frame, each at its own stamp, so the
+  // motion between them is already out of the scans and any instant can be
+  // chosen to bring them back into the robot frame. It has to be the instant
+  // the particles are at, which is odom_last_: the odom callback predicts them
+  // forward as the odometry comes in, and a cloud only arrives after the
+  // odometry that covers it. Referencing the cloud to its own stamp instead leaves the
+  // measurement comparing a scan from one instant against poses from a later
+  // one, which through a turn tilts the whole scan by the yaw between the two
+  // -- the further the point, the further it lands from the map.
+  const rclcpp::Time ref_stamp =
+    has_odom_ ? odom_last_ : rclcpp::Time(pc_accum_header_.back().stamp);
 
   try {
     const geometry_msgs::msg::TransformStamped trans = tfbuf_.lookupTransform(
-      params_->frame_ids_.at("base_link"), pc_local_accum_->header.frame_id, header.stamp,
+      params_->frame_ids_.at("base_link"), pc_local_accum_->header.frame_id, ref_stamp,
       rclcpp::Duration::from_seconds(0.1));
 
     const Eigen::Affine3f trans_eigen =
@@ -394,7 +406,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
   for (const auto & h : pc_accum_header_) {
     try {
       const geometry_msgs::msg::TransformStamped trans = tfbuf_.lookupTransform(
-        params_->frame_ids_.at("base_link"), header.stamp, h.frame_id, h.stamp,
+        params_->frame_ids_.at("base_link"), ref_stamp, h.frame_id, h.stamp,
         params_->frame_ids_.at("odom"));
       origins.push_back(Vec3(
         trans.transform.translation.x, trans.transform.translation.y,
@@ -513,7 +525,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
       if (beam_status != LidarMeasurementModelBeam::BeamStatus::LONG) {
         visualization_msgs::msg::Marker marker;
         marker.header.frame_id = params_->frame_ids_.at("map");
-        marker.header.stamp = header.stamp;
+        marker.header.stamp = ref_stamp;
         marker.ns = "Ray collisions";
         marker.id = markers.markers.size();
         marker.type = visualization_msgs::msg::Marker::CUBE;
@@ -555,7 +567,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
 
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = params_->frame_ids_.at("map");
-      marker.header.stamp = header.stamp;
+      marker.header.stamp = ref_stamp;
       marker.ns = "Rays";
       marker.id = markers.markers.size();
       marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
@@ -630,7 +642,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     for (const auto & p : pc_particle->points) {
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = params_->frame_ids_.at("map");
-      marker.header.stamp = header.stamp;
+      marker.header.stamp = ref_stamp;
       marker.ns = "Sample points";
       marker.id = markers.markers.size();
       marker.type = visualization_msgs::msg::Marker::SPHERE;
@@ -656,6 +668,10 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     if (publish_debug_marker_cb_) publish_debug_marker_cb_(markers);
   }
 
+  // odom_ is the newest odometry, which runs slightly ahead of ref_stamp:
+  // odom_last_ only advances on the messages far enough apart to predict with.
+  // The correction this leaves therefore carries that much of the motion with
+  // it, which is under the 0.05 s that gating allows.
   Vec3 map_pos;
   Quat map_rot;
   map_pos = e.pos_ - e.rot_ * odom_.rot_.inv() * odom_.pos_;
@@ -683,11 +699,11 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     state_prev_ = e;
   }
   geometry_msgs::msg::TransformStamped trans;
-  if (has_odom_)
-    trans.header.stamp = odom_last_ + tf_tolerance_base_ + *params_->tf_tolerance_;
-  else
-    trans.header.stamp =
-      rclcpp::Clock(RCL_ROS_TIME).now() + tf_tolerance_base_ + *params_->tf_tolerance_;
+  // The transform has to stay valid until the next one arrives, so with no
+  // odometry to date it from it is dated from now. ref_stamp is a sensor time
+  // there, and one already older than tf_tolerance would be published expired.
+  trans.header.stamp = (has_odom_ ? ref_stamp : rclcpp::Clock(RCL_ROS_TIME).now()) +
+                       tf_tolerance_base_ + *params_->tf_tolerance_;
   trans.header.frame_id = params_->frame_ids_.at("map");
   trans.child_frame_id = params_->frame_ids_.at("odom");
   const auto rpy = map_rot.getRPY();
@@ -730,7 +746,7 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     1.0, std::max(0.1f, static_cast<float>(params_->num_particles_) / pf_->getParticleSize()));
 
   geometry_msgs::msg::PoseWithCovarianceStamped pose;
-  pose.header.stamp = header.stamp;
+  pose.header.stamp = ref_stamp;
   pose.header.frame_id = trans.header.frame_id;
   pose.pose.pose.position.x = e.pos_.x_;
   pose.pose.pose.position.y = e.pos_.y_;
@@ -780,10 +796,10 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     check_subscribers_cb_ ? check_subscribers_cb_("unmatched") : false;
 
   if (
-    (rclcpp::Time(header.stamp) > match_output_last_ + *params_->match_output_interval_ ||
-     rclcpp::Time(header.stamp) + rclcpp::Duration::from_seconds(1.0) < match_output_last_) &&
+    (ref_stamp > match_output_last_ + *params_->match_output_interval_ ||
+     ref_stamp + rclcpp::Duration::from_seconds(1.0) < match_output_last_) &&
     (has_matched_subscribers || has_unmatched_subscribers)) {
-    match_output_last_ = rclcpp::Time(header.stamp);
+    match_output_last_ = ref_stamp;
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr pc_match(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::PointCloud<pcl::PointXYZ>::Ptr pc_unmatch(new pcl::PointCloud<pcl::PointXYZ>);
@@ -806,14 +822,14 @@ void MCL3dlEngine::measure()  // NOLINT(readability/fn_size)
     if (has_matched_subscribers && publish_matched_cb_) {
       sensor_msgs::msg::PointCloud2 pc2;
       pcl::toROSMsg(*pc_match, pc2);
-      pc2.header.stamp = header.stamp;
+      pc2.header.stamp = ref_stamp;
       pc2.header.frame_id = params_->frame_ids_.at("map");
       publish_matched_cb_(pc2);
     }
     if (has_unmatched_subscribers && publish_unmatched_cb_) {
       sensor_msgs::msg::PointCloud2 pc2;
       pcl::toROSMsg(*pc_unmatch, pc2);
-      pc2.header.stamp = header.stamp;
+      pc2.header.stamp = ref_stamp;
       pc2.header.frame_id = params_->frame_ids_.at("map");
       publish_unmatched_cb_(pc2);
     }
