@@ -60,8 +60,12 @@ namespace mcl_3dl
 /// cell with no occupied cell in reach is a miss without reading anything.
 ///
 /// The distances are measured against the map points themselves, so the cells
-/// only decide which points are worth measuring against; the answer is the same
-/// one the kd-tree gives, not a quantised version of it.
+/// only decide which points are worth measuring against: the answer is the
+/// exact nearest distance, not a quantised one, which a test against brute
+/// force covers. It is not quite the chunked kd-tree's answer, which is an
+/// approximate search (setEpsilon) over chunks that overlap in unweighted
+/// metres -- the grid is the stricter of the two, so a point near the cut-off
+/// can match here where the tree let it go.
 ///
 /// Distances follow the same per-axis weights as the kd-tree's point
 /// representation (dist_weight_*), which the caller passes to

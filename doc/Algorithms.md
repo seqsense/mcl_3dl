@@ -15,7 +15,7 @@ The node calculates a likelihood of each particle by multiplying a likelihood of
 It realizes pointcloud matching with small computation power with rejecting matched-but-wrong matches.
 
 In this implementation, the likelihood of *likelihood_field_range_finder_model* is a summation of distances from each measured point to closest point in the map. 
-The closest point search uses chunked Kd-tree, and the measured point is voxel filtered and random sampled to reduce computation power.
+The closest point search uses a grid of cells holding the map points, and the measured point is voxel filtered and random sampled to reduce computation power.
 
 Likelihood of *beam_range_finder_model* is calculated by ray casting.
 Where `N` is the number of rays of measured point, `n` is the number of the rays which passes through objects described in the map, and *alpha* is a rejection weight, the likelihood is given as `alpha^(n/N)`.
