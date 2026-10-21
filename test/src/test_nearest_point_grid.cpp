@@ -104,6 +104,8 @@ void expectAgreesWithBruteForce(const Weights & w)
     // The grid scales each coordinate before subtracting, as PCL's point
     // representation does, so its rounding differs from the brute force's in
     // the last few digits. Right at the cut-off that can flip hit into miss.
+    // Whether the cut-off itself counts as a hit is not fixed either way, so
+    // queries that land on it are not asked.
     if (std::abs(expected - kMaxDist) < kTolerance) continue;
 
     float actual_sq = 0;
@@ -167,8 +169,17 @@ TEST(NearestPointGrid, EmptyMap)
 
 TEST(NearestPointGrid, IgnoresNonFinitePoints)
 {
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const float inf = std::numeric_limits<float>::infinity();
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  cloud->points.push_back(makePoint(std::numeric_limits<float>::quiet_NaN(), 0.0, 0.0));
+  // Every axis, since a cell index is taken from all three: a point let past
+  // on any one of them lands in an arbitrary cell and answers for it.
+  cloud->points.push_back(makePoint(nan, 0.0, 0.0));
+  cloud->points.push_back(makePoint(0.0, nan, 0.0));
+  cloud->points.push_back(makePoint(0.0, 0.0, nan));
+  cloud->points.push_back(makePoint(inf, 0.0, 0.0));
+  cloud->points.push_back(makePoint(0.0, -inf, 0.0));
+  cloud->points.push_back(makePoint(0.0, 0.0, inf));
   cloud->points.push_back(makePoint(0.3, 0.0, 0.0));
 
   mcl_3dl::NearestPointGrid<pcl::PointXYZ> grid(kCellSize, kMaxDist);

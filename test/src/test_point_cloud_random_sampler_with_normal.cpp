@@ -192,9 +192,19 @@ TEST(PointCloudSamplerWithNormal, MapNormals)
     mcl_3dl::Vec3(3.5, -5.0, 0), mcl_3dl::Quat(mcl_3dl::Vec3(0, 0, 1), robot_yaw));
   const std::vector<State6DOF> cov_matrix = buildPoseCovarianceMatrix(robot_yaw, 1.0, 0.2);
 
-  // The map is those same surfaces, where the robot thinks they are.
+  // The map is those same surfaces, a little away from where the robot thinks
+  // they are. The lookup goes through the particle mean, so a map laid exactly
+  // under the scan is reached whatever search range it is given -- the range
+  // could shrink by any factor and nothing here would notice.
+  const double map_offset = 0.15;
   pcl::PointCloud<PointXYZIL>::Ptr map(new pcl::PointCloud<PointXYZIL>());
   *map = *pc;
+  for (auto & p : map->points) {
+    // One wall's normal is x in this frame and the other's is y, so both move
+    // across their own surface rather than along it.
+    p.x += map_offset;
+    p.y += map_offset;
+  }
   mean.transform(*map);
 
   pcl::PointCloud<pcl::Normal>::Ptr map_normals(new pcl::PointCloud<pcl::Normal>());
@@ -237,15 +247,10 @@ TEST(PointCloudSamplerWithNormal, MapNormals)
     sampler.setParticleStatistics(mean, cov_matrix);
     sampler.setInputCloud(pc);
 
-    const size_t sample_num = 100;
-    for (const ParameterSet & parameter : parameters) {
-      sampler_params->perform_weighting_ratio_ = parameter.perform_weighting_ratio;
-      sampler_params->max_weight_ratio_ = parameter.max_weight_ratio;
-      sampler_params->max_weight_ = parameter.max_weight;
-      sampler.refreshParameters();
-
+    const auto draw_ratio = [&]() {
+      const size_t sample_num = 100;
       const pcl::PointCloud<PointXYZIL>::Ptr sampled = sampler.sample(pc, indices, sample_num);
-      ASSERT_EQ(sample_num, sampled->size());
+      EXPECT_EQ(sample_num, sampled->size());
 
       std::vector<int> counts(2, 0);
       for (const auto & point : *sampled) {
@@ -253,13 +258,37 @@ TEST(PointCloudSamplerWithNormal, MapNormals)
           return (p.x == point.x) && (p.y == point.y) && (p.z == point.z);
         };
         const size_t index = std::find_if(pc->begin(), pc->end(), pred) - pc->begin();
-        ASSERT_LT(index, pc->size()) << "sampled a point that is not in the named subset";
+        EXPECT_LT(index, pc->size()) << "sampled a point that is not in the named subset";
         ++counts[index / (wall_length * wall_length)];
       }
-      const double ratio = static_cast<double>(counts[0]) / (counts[0] + counts[1]);
+      return static_cast<double>(counts[0]) / (counts[0] + counts[1]);
+    };
+
+    for (const ParameterSet & parameter : parameters) {
+      sampler_params->perform_weighting_ratio_ = parameter.perform_weighting_ratio;
+      sampler_params->max_weight_ratio_ = parameter.max_weight_ratio;
+      sampler_params->max_weight_ = parameter.max_weight;
+      sampler.refreshParameters();
+
+      const double ratio = draw_ratio();
       EXPECT_GE(ratio, parameter.expected_ratio_min) << "Failed at seed #" << seed;
       EXPECT_LE(ratio, parameter.expected_ratio_max) << "Failed at seed #" << seed;
     }
+
+    // The other side of that offset: a range shorter than it reaches no map
+    // point at all, every normal comes back NaN, and the draw falls to the even
+    // one -- while the weights still ask for the strongest of the three. This
+    // is the case a map laid under the scan cannot produce, and it is what a
+    // search range measured in the wrong metric leaves behind.
+    sampler_params->perform_weighting_ratio_ = parameters[0].perform_weighting_ratio;
+    sampler_params->max_weight_ratio_ = parameters[0].max_weight_ratio;
+    sampler_params->max_weight_ = parameters[0].max_weight;
+    sampler_params->normal_search_range_ = map_offset / 2;
+    sampler.refreshParameters();
+
+    const double out_of_range_ratio = draw_ratio();
+    EXPECT_GE(out_of_range_ratio, 0.4) << "Failed at seed #" << seed;
+    EXPECT_LE(out_of_range_ratio, 0.6) << "Failed at seed #" << seed;
   }
 }
 
@@ -321,8 +350,11 @@ TEST(PointCloudSamplerWithNormal, PoolRatioTooSmallToWeigh)
     }
     const double ratio = static_cast<double>(counts[0]) / (counts[0] + counts[1]);
     // Weaker than at the default ratio, because the pool is smaller -- but far
-    // from the 0.5 an unweighted draw gives.
+    // from the 0.5 an unweighted draw gives. The upper bound is where the
+    // default pool's band starts, so raising the floor on the ratio to buy a
+    // stronger draw fails here rather than passing quietly.
     EXPECT_GE(ratio, 0.7) << "Failed at seed #" << seed;
+    EXPECT_LE(ratio, 0.85) << "Failed at seed #" << seed;
   }
 }
 
