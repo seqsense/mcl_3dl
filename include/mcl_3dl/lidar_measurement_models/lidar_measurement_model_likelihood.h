@@ -36,6 +36,7 @@
 
 #include "mcl_3dl/chunked_kdtree.h"
 #include "mcl_3dl/lidar_measurement_model_base.h"
+#include "mcl_3dl/nearest_point_grid.h"
 #include "mcl_3dl/parameters.h"
 #include "mcl_3dl/pf.h"
 #include "mcl_3dl/point_cloud_random_sampler.h"
@@ -52,6 +53,7 @@ private:
   size_t num_points_;
   float clip_far_sq_;
   float clip_near_sq_;
+  typename NearestPointGrid<PointType>::Ptr grid_;
 
 public:
   explicit LidarMeasurementModelLikelihood(
@@ -60,6 +62,7 @@ public:
   inline float getMaxSearchRange() const { return params_->match_dist_min_; }
   void refreshParameters() final;
   void setGlobalLocalizationStatus(const size_t num_particles, const size_t current_num_particles);
+  void setMap(const typename NearestPointGrid<PointType>::Ptr & grid) { grid_ = grid; }
   pcl::PointCloud<PointType>::Ptr filter(
     const pcl::PointCloud<PointType>::ConstPtr & pc,
     const PointCloudRandomSampler<PointType> & sampler) const;

@@ -4,6 +4,10 @@ catkin_add_gtest(test_chunked_kdtree src/test_chunked_kdtree.cpp)
 target_link_libraries(test_chunked_kdtree ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_compile_options(test_chunked_kdtree PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 
+catkin_add_gtest(test_nearest_point_grid src/test_nearest_point_grid.cpp)
+target_link_libraries(test_nearest_point_grid ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+target_compile_options(test_nearest_point_grid PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
+
 catkin_add_gtest(test_cloud_accum src/test_cloud_accum.cpp ../src/cloud_accum.cpp)
 target_link_libraries(test_cloud_accum ${catkin_LIBRARIES})
 target_compile_options(test_cloud_accum PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})

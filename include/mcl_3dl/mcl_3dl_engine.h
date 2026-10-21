@@ -74,6 +74,7 @@
 #include "mcl_3dl/motion_prediction_model_base.h"
 #include "mcl_3dl/motion_prediction_models/motion_prediction_model_differential_drive.h"
 #include "mcl_3dl/nd.h"
+#include "mcl_3dl/nearest_point_grid.h"
 #include "mcl_3dl/noise_generators/multivariate_noise_generator.h"
 #include "mcl_3dl/parameters.h"
 #include "mcl_3dl/pf.h"
@@ -312,6 +313,7 @@ protected:
   pcl::PointCloud<PointType>::Ptr pc_update_;
   pcl::PointCloud<PointType>::Ptr pc_all_accum_;
   ChunkedKdtree<PointType>::Ptr kdtree_;
+  NearestPointGrid<PointType>::Ptr nearest_point_grid_;
 
   CloudAccumulationLogicBase::Ptr accum_;
   pcl::PointCloud<PointType>::Ptr pc_local_accum_;

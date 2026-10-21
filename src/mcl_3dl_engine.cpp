@@ -142,6 +142,15 @@ bool MCL3dlEngine::configure(Parameters & params)
   kdtree_->setEpsilon(params_->map_grid_min_ / 16);
   kdtree_->setPointRepresentation(point_rep_);
 
+  // Cells of about half the match radius. Larger, and each holds too many map
+  // points to measure against; smaller, and a query reads too many cells to
+  // reach the same answer.
+  const float match_dist = params_->lidar_measurement_likelihood_params_->match_dist_min_;
+  nearest_point_grid_.reset(new NearestPointGrid<PointType>(match_dist / 2, match_dist));
+  nearest_point_grid_->setRescaleValues(params_->dist_weight_.data());
+  static_cast<LidarMeasurementModelLikelihood *>(lidar_measurements_["likelihood"].get())
+    ->setMap(nearest_point_grid_);
+
   return true;
 }
 
@@ -1183,6 +1192,7 @@ MapUpdateResult MCL3dlEngine::mapUpdateTimer()
       pc_map2_ = pc_map_;
     }
     kdtree_->setInputCloud(pc_map2_);
+    nearest_point_grid_->setInputCloud(pc_map2_);
     updateMapNormals();
 
     sensor_msgs::msg::PointCloud2 out;

@@ -111,14 +111,19 @@ LidarMeasurementResult LidarMeasurementModelLikelihood::measure(
   s.transform(*pc_particle);
   size_t num = 0;
   for (auto & p : pc_particle->points) {
-    if (kdtree->radiusSearch(p, params_->match_dist_min_, id, sqdist, 1)) {
-      const float dist =
-        params_->match_dist_min_ - std::max(std::sqrt(sqdist[0]), params_->match_dist_flat_);
-      if (dist < 0.0) continue;
-
-      score_like += dist * params_->match_weight_;
-      num++;
+    float d_sq;
+    if (grid_) {
+      if (!grid_->nearestSquaredDistance(p, d_sq)) continue;
+    } else {
+      if (!kdtree->radiusSearch(p, params_->match_dist_min_, id, sqdist, 1)) continue;
+      d_sq = sqdist[0];
     }
+    const float dist =
+      params_->match_dist_min_ - std::max(std::sqrt(d_sq), params_->match_dist_flat_);
+    if (dist < 0.0) continue;
+
+    score_like += dist * params_->match_weight_;
+    num++;
   }
   const float match_ratio = static_cast<float>(num) / pc_particle->points.size();
 

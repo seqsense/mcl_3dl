@@ -208,6 +208,12 @@ elseif($ENV{ROS_VERSION} EQUAL 2)
     target_link_libraries(test_chunked_kdtree ${PCL_LIBRARIES})
     target_compile_options(test_chunked_kdtree PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
 
+    ament_add_gtest(test_nearest_point_grid test/src/test_nearest_point_grid.cpp)
+    target_include_directories(test_nearest_point_grid PRIVATE include)
+    target_include_directories(test_nearest_point_grid SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
+    target_link_libraries(test_nearest_point_grid ${PCL_LIBRARIES})
+    target_compile_options(test_nearest_point_grid PRIVATE ${UNIT_TEST_COMPILE_OPTIONS})
+
     ament_add_gtest(test_cloud_accum test/src/test_cloud_accum.cpp src/cloud_accum.cpp)
     target_include_directories(test_cloud_accum PRIVATE include)
     ament_target_dependencies(test_cloud_accum rclcpp sensor_msgs)
