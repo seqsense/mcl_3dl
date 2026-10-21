@@ -117,10 +117,15 @@ private:
   /// Every named point's normal, taken from the nearest map point.
   ///
   /// The cloud is in the robot's frame and the map is not, so each point is put
-  /// through the particle mean first -- near enough for choosing which surface
-  /// a point sits on, which is all the weighting needs. A point with no map
-  /// point near it keeps a NaN normal and is weighted as if flat, the same as
-  /// an estimate that failed.
+  /// through the particle mean first. That is near enough to pick the surface a
+  /// point sits on only while the mean is within normal_search_range of the
+  /// truth: past that every lookup comes back empty, every normal is a NaN, and
+  /// the weighting goes uniform without saying so. Estimating from the scan,
+  /// which is what this replaced, did not depend on the pose at all. So the
+  /// weighting helps once the estimate is roughly right and steps aside while
+  /// it is not -- through a global localization or just after a kidnap, the
+  /// draw is the uniform one. A point with no map point near it keeps a NaN
+  /// normal and is weighted as if flat, the same as an estimate that failed.
   ///
   /// The tree is the plain one the normals were estimated with, not the one the
   /// measurement models match against: that one carries dist_weight_*, which
