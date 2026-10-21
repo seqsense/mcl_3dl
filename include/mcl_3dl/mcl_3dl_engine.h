@@ -155,6 +155,8 @@ public:
   bool configure(Parameters & params);
 
   /// Estimate a normal for every map point, for the sampler to weigh with.
+  /// Does nothing unless use_random_sampler_with_normal is set, since nothing
+  /// else reads them.
   void updateMapNormals();
 
   /// Process incoming map pointcloud
