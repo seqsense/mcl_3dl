@@ -206,7 +206,17 @@ private:
     Block() : head(BLOCK_CELLS, -1), ring(BLOCK_CELLS, kUnreachable) {}
   };
 
-  int32_t cellOf(const float v) const { return static_cast<int32_t>(std::floor(v / cell_size_)); }
+  /// Which cell a coordinate falls in. In double, and so is the offset within
+  /// the cell that visitRing() works out from it: a float cell index
+  /// multiplied back out lands up to an ulp of the coordinate away from the
+  /// cell's real edge, which at map coordinates in the tens of thousands is a
+  /// sizeable fraction of a cell. The offset then comes out wrong, the gap
+  /// visitRing() prunes a shell by comes out wider than the distance it stands
+  /// in for, and a map point inside the radius is passed over.
+  int32_t cellOf(const float v) const
+  {
+    return static_cast<int32_t>(std::floor(static_cast<double>(v) / cell_size_));
+  }
 
   static BlockId blockIdOf(const int32_t cx, const int32_t cy, const int32_t cz)
   {
@@ -311,9 +321,11 @@ private:
     const float x, const float y, const float z, const int32_t cx, const int32_t cy,
     const int32_t cz, const int ring, BlockCache & cache, float & best) const
   {
-    const float ox = x - cx * cell_size_;
-    const float oy = y - cy * cell_size_;
-    const float oz = z - cz * cell_size_;
+    // See cellOf(): the cell edge has to be reached the same way the index was.
+    const double cell = cell_size_;
+    const float ox = static_cast<float>(x - cx * cell);
+    const float oy = static_cast<float>(y - cy * cell);
+    const float oz = static_cast<float>(z - cz * cell);
 
     bool found = false;
     for (int dz = -ring; dz <= ring; dz++) {

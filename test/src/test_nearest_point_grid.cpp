@@ -72,7 +72,7 @@ float bruteForce(
   return best;
 }
 
-void expectAgreesWithBruteForce(const Weights & w)
+void expectAgreesWithBruteForce(const Weights & w, const float origin = 0.0f)
 {
   std::mt19937 rand(42);
   std::uniform_real_distribution<float> coord(-3.0, 3.0);
@@ -82,12 +82,13 @@ void expectAgreesWithBruteForce(const Weights & w)
   // point each, and clusters where they hold several.
   for (int i = 0; i < 40; i++) {
     for (int j = 0; j < 40; j++) {
-      cloud->points.push_back(makePoint(i * 0.1, j * 0.1, 0.0));
-      cloud->points.push_back(makePoint(i * 0.1, 0.0, j * 0.1));
+      cloud->points.push_back(makePoint(origin + i * 0.1, origin + j * 0.1, origin));
+      cloud->points.push_back(makePoint(origin + i * 0.1, origin, origin + j * 0.1));
     }
   }
   for (int i = 0; i < 500; i++) {
-    cloud->points.push_back(makePoint(coord(rand), coord(rand), coord(rand)));
+    cloud->points.push_back(
+      makePoint(origin + coord(rand), origin + coord(rand), origin + coord(rand)));
   }
 
   mcl_3dl::NearestPointGrid<pcl::PointXYZ> grid(kCellSize, kMaxDist);
@@ -99,7 +100,8 @@ void expectAgreesWithBruteForce(const Weights & w)
   int hits = 0;
   int misses = 0;
   for (int i = 0; i < 20000; i++) {
-    const pcl::PointXYZ q = makePoint(query(rand), query(rand), query(rand));
+    const pcl::PointXYZ q =
+      makePoint(origin + query(rand), origin + query(rand), origin + query(rand));
     const float expected = std::sqrt(bruteForce(*cloud, q, w));
     // The grid scales each coordinate before subtracting, as PCL's point
     // representation does, so its rounding differs from the brute force's in
@@ -130,6 +132,17 @@ TEST(NearestPointGrid, MatchesBruteForce) { expectAgreesWithBruteForce({1.0, 1.0
 TEST(NearestPointGrid, MatchesBruteForceWithRescale)
 {
   expectAgreesWithBruteForce({1.0, 1.0, 5.0});
+}
+
+// A map in a frame whose origin is a long way off -- a georeferenced one, say.
+// Which cell a coordinate falls in and where it sits inside that cell have to
+// be worked out to the same precision. Worked out to different ones, the gap
+// that prunes a shell comes out wider than the distance it stands in for, and
+// a map point well inside the radius is passed over. Unit weights, so the grid
+// and the brute force subtract the same two numbers in the same order.
+TEST(NearestPointGrid, MatchesBruteForceFarFromTheOrigin)
+{
+  expectAgreesWithBruteForce({1.0, 1.0, 1.0}, 1.0e5);
 }
 
 // setInputCloud() is called again on every map update, so what it replaces has
