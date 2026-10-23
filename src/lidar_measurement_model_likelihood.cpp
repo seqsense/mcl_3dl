@@ -83,16 +83,15 @@ LidarMeasurementModelLikelihood::filter(
     if (p.z < params_->clip_z_min_ || params_->clip_z_max_ < p.z) return true;
     return false;
   };
-  pcl::PointCloud<LidarMeasurementModelBase::PointType>::Ptr pc_filtered(
-    new pcl::PointCloud<LidarMeasurementModelBase::PointType>);
-  *pc_filtered = *pc;
-  pc_filtered->erase(
-    std::remove_if(pc_filtered->begin(), pc_filtered->end(), local_points_filter),
-    pc_filtered->end());
-  pc_filtered->width = 1;
-  pc_filtered->height = pc_filtered->points.size();
+  // Named rather than copied out: the sampler may have worked something out
+  // about this cloud that it can only reuse if it is still the same cloud.
+  std::vector<size_t> indices;
+  indices.reserve(pc->points.size());
+  for (size_t i = 0; i < pc->points.size(); i++) {
+    if (!local_points_filter(pc->points[i])) indices.push_back(i);
+  }
 
-  return sampler.sample(pc_filtered, num_points_);
+  return sampler.sample(pc, indices, num_points_);
 }
 
 LidarMeasurementResult LidarMeasurementModelLikelihood::measure(
@@ -112,14 +111,19 @@ LidarMeasurementResult LidarMeasurementModelLikelihood::measure(
   s.transform(*pc_particle);
   size_t num = 0;
   for (auto & p : pc_particle->points) {
-    if (kdtree->radiusSearch(p, params_->match_dist_min_, id, sqdist, 1)) {
-      const float dist =
-        params_->match_dist_min_ - std::max(std::sqrt(sqdist[0]), params_->match_dist_flat_);
-      if (dist < 0.0) continue;
-
-      score_like += dist * params_->match_weight_;
-      num++;
+    float d_sq;
+    if (grid_) {
+      if (!grid_->nearestSquaredDistance(p, d_sq)) continue;
+    } else {
+      if (!kdtree->radiusSearch(p, params_->match_dist_min_, id, sqdist, 1)) continue;
+      d_sq = sqdist[0];
     }
+    const float dist =
+      params_->match_dist_min_ - std::max(std::sqrt(d_sq), params_->match_dist_flat_);
+    if (dist < 0.0) continue;
+
+    score_like += dist * params_->match_weight_;
+    num++;
   }
   const float match_ratio = static_cast<float>(num) / pc_particle->points.size();
 

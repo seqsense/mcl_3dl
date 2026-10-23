@@ -74,6 +74,7 @@
 #include "mcl_3dl/motion_prediction_model_base.h"
 #include "mcl_3dl/motion_prediction_models/motion_prediction_model_differential_drive.h"
 #include "mcl_3dl/nd.h"
+#include "mcl_3dl/nearest_point_grid.h"
 #include "mcl_3dl/noise_generators/multivariate_noise_generator.h"
 #include "mcl_3dl/parameters.h"
 #include "mcl_3dl/pf.h"
@@ -152,6 +153,11 @@ public:
   /// Initialize the engine with loaded parameters.
   /// The Parameters object must outlive the engine.
   bool configure(Parameters & params);
+
+  /// Estimate a normal for every map point, for the sampler to weigh with.
+  /// Does nothing unless use_random_sampler_with_normal is set, since nothing
+  /// else reads them.
+  void updateMapNormals();
 
   /// Process incoming map pointcloud
   void processMapCloud(const std::shared_ptr<const sensor_msgs::msg::PointCloud2> & msg);
@@ -305,9 +311,11 @@ protected:
 
   pcl::PointCloud<PointType>::Ptr pc_map_;
   pcl::PointCloud<PointType>::Ptr pc_map2_;
+  pcl::PointCloud<pcl::Normal>::ConstPtr map_normals_;
   pcl::PointCloud<PointType>::Ptr pc_update_;
   pcl::PointCloud<PointType>::Ptr pc_all_accum_;
   ChunkedKdtree<PointType>::Ptr kdtree_;
+  NearestPointGrid<PointType>::Ptr nearest_point_grid_;
 
   CloudAccumulationLogicBase::Ptr accum_;
   pcl::PointCloud<PointType>::Ptr pc_local_accum_;

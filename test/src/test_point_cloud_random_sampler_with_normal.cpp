@@ -31,12 +31,15 @@
 
 #include <algorithm>
 #include <memory>
+#include <numeric>
 #include <vector>
 
 #include "mcl_3dl/parameters.h"
 #include "mcl_3dl/point_cloud_random_samplers/point_cloud_sampler_with_normal.h"
 #include "mcl_3dl/point_types.h"
+#include "pcl/features/normal_3d.h"
 #include "pcl/point_types.h"
+#include "pcl/search/kdtree.h"
 
 namespace mcl_3dl
 {
@@ -166,6 +169,216 @@ TEST(PointCloudSamplerWithNormal, Sampling)
   // Point cloud size is smaller than requested sample number
   invalid_cloud->push_back(PointXYZIL());
   EXPECT_EQ(1u, sampler.sample(invalid_cloud, 100)->size());
+}
+
+// The map-normal path: the sampler is handed the map and a normal per map
+// point instead of estimating them from the scan, and the measurement models
+// name a subset of one cloud instead of handing over a copy of it.
+//
+// The assertion is the weighting itself, on the same two walls as above. It is
+// what goes when the lookups come back empty and every normal is a NaN, which
+// is what a search radius measured in the wrong metric does -- and the draw
+// still returns the right number of points while that happens, so counting
+// them would not notice.
+TEST(PointCloudSamplerWithNormal, MapNormals)
+{
+  const int wall_length = 30;
+  pcl::PointCloud<PointXYZIL>::Ptr pc(new pcl::PointCloud<PointXYZIL>());
+  buildWall(pc, 0, wall_length);
+  buildWall(pc, M_PI / 2, wall_length);
+
+  const double robot_yaw = M_PI / 6;
+  const State6DOF mean(
+    mcl_3dl::Vec3(3.5, -5.0, 0), mcl_3dl::Quat(mcl_3dl::Vec3(0, 0, 1), robot_yaw));
+  const std::vector<State6DOF> cov_matrix = buildPoseCovarianceMatrix(robot_yaw, 1.0, 0.2);
+
+  // The map is those same surfaces, a little away from where the robot thinks
+  // they are. The lookup goes through the particle mean, so a map laid exactly
+  // under the scan is reached whatever search range it is given -- the range
+  // could shrink by any factor and nothing here would notice.
+  const double map_offset = 0.15;
+  pcl::PointCloud<PointXYZIL>::Ptr map(new pcl::PointCloud<PointXYZIL>());
+  *map = *pc;
+  for (auto & p : map->points) {
+    // One wall's normal is x in this frame and the other's is y, so both move
+    // across their own surface rather than along it.
+    p.x += map_offset;
+    p.y += map_offset;
+  }
+  mean.transform(*map);
+
+  pcl::PointCloud<pcl::Normal>::Ptr map_normals(new pcl::PointCloud<pcl::Normal>());
+  pcl::NormalEstimation<PointXYZIL, pcl::Normal> ne;
+  pcl::search::KdTree<PointXYZIL>::Ptr map_tree(new pcl::search::KdTree<PointXYZIL>());
+  ne.setInputCloud(map);
+  ne.setSearchMethod(map_tree);
+  ne.setRadiusSearch(0.4);
+  ne.compute(*map_normals);
+
+  std::vector<size_t> indices(pc->size());
+  std::iota(indices.begin(), indices.end(), 0);
+
+  struct ParameterSet
+  {
+    double perform_weighting_ratio;
+    double max_weight_ratio;
+    double max_weight;
+    double expected_ratio_min;
+    double expected_ratio_max;
+  };
+  const std::vector<ParameterSet> parameters = {
+    // Weighted: the wall at right angles to the uncertainty is worth 10 of the
+    // parallel one, so the draw comes almost entirely from it.
+    {2.0, 4.0, 10.0, 0.85, 1.0},
+    // Between the two, where the weight is interpolated rather than clamped.
+    // The band the robot actually runs in, and the one a weight of 1.0 would
+    // pass unnoticed through the other two.
+    {2.0, 8.0, 5.0, 0.65, 0.85},
+    // The nearest setting that must not change: both walls worth 1, so the
+    // draw is even. An all-NaN lookup lands here whatever the weights say.
+    {6.0, 7.0, 10.0, 0.4, 0.6},
+  };
+
+  for (const unsigned int seed : {12345u, 45678u}) {
+    auto sampler_params = std::make_shared<PointCloudSamplerWithNormalParameters>();
+    sampler_params->normal_search_range_ = 0.4;
+    PointCloudSamplerWithNormal<PointXYZIL> sampler(sampler_params, seed);
+    sampler.setMap(map_tree, map_normals);
+    sampler.setParticleStatistics(mean, cov_matrix);
+    sampler.setInputCloud(pc);
+
+    const auto draw_ratio = [&]() {
+      const size_t sample_num = 100;
+      const pcl::PointCloud<PointXYZIL>::Ptr sampled = sampler.sample(pc, indices, sample_num);
+      EXPECT_EQ(sample_num, sampled->size());
+
+      std::vector<int> counts(2, 0);
+      for (const auto & point : *sampled) {
+        const auto pred = [&point](const PointXYZIL & p) {
+          return (p.x == point.x) && (p.y == point.y) && (p.z == point.z);
+        };
+        const size_t index = std::find_if(pc->begin(), pc->end(), pred) - pc->begin();
+        EXPECT_LT(index, pc->size()) << "sampled a point that is not in the named subset";
+        ++counts[index / (wall_length * wall_length)];
+      }
+      return static_cast<double>(counts[0]) / (counts[0] + counts[1]);
+    };
+
+    for (const ParameterSet & parameter : parameters) {
+      sampler_params->perform_weighting_ratio_ = parameter.perform_weighting_ratio;
+      sampler_params->max_weight_ratio_ = parameter.max_weight_ratio;
+      sampler_params->max_weight_ = parameter.max_weight;
+      sampler.refreshParameters();
+
+      const double ratio = draw_ratio();
+      EXPECT_GE(ratio, parameter.expected_ratio_min) << "Failed at seed #" << seed;
+      EXPECT_LE(ratio, parameter.expected_ratio_max) << "Failed at seed #" << seed;
+    }
+
+    // The other side of that offset: a range shorter than it reaches no map
+    // point at all, every normal comes back NaN, and the draw falls to the even
+    // one -- while the weights still ask for the strongest of the three. This
+    // is the case a map laid under the scan cannot produce, and it is what a
+    // search range measured in the wrong metric leaves behind.
+    sampler_params->perform_weighting_ratio_ = parameters[0].perform_weighting_ratio;
+    sampler_params->max_weight_ratio_ = parameters[0].max_weight_ratio;
+    sampler_params->max_weight_ = parameters[0].max_weight;
+    sampler_params->normal_search_range_ = map_offset / 2;
+    sampler.refreshParameters();
+
+    const double out_of_range_ratio = draw_ratio();
+    EXPECT_GE(out_of_range_ratio, 0.4) << "Failed at seed #" << seed;
+    EXPECT_LE(out_of_range_ratio, 0.6) << "Failed at seed #" << seed;
+  }
+}
+
+// pool_ratio 1 asks for a pool exactly `num` long, and a draw that takes each
+// point once would then have to take all of them: the weights would decide
+// nothing and the draw would come out uniform, while still paying for a map
+// query per point. The sampler holds the ratio to the least that leaves a
+// choice, so a 1 still weights -- weaker than at the default, because the pool
+// is smaller, but nowhere near the even draw it would be without the bound.
+TEST(PointCloudSamplerWithNormal, PoolRatioTooSmallToWeigh)
+{
+  const int wall_length = 30;
+  pcl::PointCloud<PointXYZIL>::Ptr pc(new pcl::PointCloud<PointXYZIL>());
+  buildWall(pc, 0, wall_length);
+  buildWall(pc, M_PI / 2, wall_length);
+
+  const double robot_yaw = M_PI / 6;
+  const State6DOF mean(
+    mcl_3dl::Vec3(3.5, -5.0, 0), mcl_3dl::Quat(mcl_3dl::Vec3(0, 0, 1), robot_yaw));
+  const std::vector<State6DOF> cov_matrix = buildPoseCovarianceMatrix(robot_yaw, 1.0, 0.2);
+
+  pcl::PointCloud<PointXYZIL>::Ptr map(new pcl::PointCloud<PointXYZIL>());
+  *map = *pc;
+  mean.transform(*map);
+  pcl::PointCloud<pcl::Normal>::Ptr map_normals(new pcl::PointCloud<pcl::Normal>());
+  pcl::NormalEstimation<PointXYZIL, pcl::Normal> ne;
+  pcl::search::KdTree<PointXYZIL>::Ptr map_tree(new pcl::search::KdTree<PointXYZIL>());
+  ne.setInputCloud(map);
+  ne.setSearchMethod(map_tree);
+  ne.setRadiusSearch(0.4);
+  ne.compute(*map_normals);
+
+  std::vector<size_t> indices(pc->size());
+  std::iota(indices.begin(), indices.end(), 0);
+
+  for (const unsigned int seed : {12345u, 45678u}) {
+    auto params = std::make_shared<PointCloudSamplerWithNormalParameters>();
+    params->normal_search_range_ = 0.4;
+    params->perform_weighting_ratio_ = 2.0;
+    params->max_weight_ratio_ = 4.0;
+    params->max_weight_ = 10.0;
+    params->pool_ratio_ = 1;
+    PointCloudSamplerWithNormal<PointXYZIL> sampler(params, seed);
+    sampler.setMap(map_tree, map_normals);
+    sampler.setParticleStatistics(mean, cov_matrix);
+    sampler.setInputCloud(pc);
+
+    const size_t sample_num = 100;
+    const pcl::PointCloud<PointXYZIL>::Ptr sampled = sampler.sample(pc, indices, sample_num);
+    ASSERT_EQ(sample_num, sampled->size());
+
+    std::vector<int> counts(2, 0);
+    for (const auto & point : *sampled) {
+      const auto pred = [&point](const PointXYZIL & p) {
+        return (p.x == point.x) && (p.y == point.y) && (p.z == point.z);
+      };
+      const size_t index = std::find_if(pc->begin(), pc->end(), pred) - pc->begin();
+      ++counts[index / (wall_length * wall_length)];
+    }
+    const double ratio = static_cast<double>(counts[0]) / (counts[0] + counts[1]);
+    // Weaker than at the default ratio, because the pool is smaller -- but far
+    // from the 0.5 an unweighted draw gives. The upper bound is where the
+    // default pool's band starts, so raising the floor on the ratio to buy a
+    // stronger draw fails here rather than passing quietly.
+    EXPECT_GE(ratio, 0.7) << "Failed at seed #" << seed;
+    EXPECT_LE(ratio, 0.85) << "Failed at seed #" << seed;
+  }
+}
+
+// What the draw does with nothing to draw from, or nothing to draw. A cycle
+// whose clip leaves no points, and one that asks for none, both happen; both
+// have to come back empty rather than reach the weighted draw.
+TEST(PointCloudSamplerWithNormal, EmptyIndicesAndZeroCount)
+{
+  pcl::PointCloud<PointXYZIL>::Ptr pc(new pcl::PointCloud<PointXYZIL>());
+  buildWall(pc, 0, 10);
+  const State6DOF mean(mcl_3dl::Vec3(0, 0, 0), mcl_3dl::Quat(mcl_3dl::Vec3(0, 0, 1), 0.0));
+
+  auto params = std::make_shared<PointCloudSamplerWithNormalParameters>();
+  PointCloudSamplerWithNormal<PointXYZIL> sampler(params, 12345u);
+  sampler.setParticleStatistics(mean, buildPoseCovarianceMatrix(0.0, 1.0, 0.2));
+  sampler.setInputCloud(pc);
+
+  std::vector<size_t> indices(pc->size());
+  std::iota(indices.begin(), indices.end(), 0);
+
+  EXPECT_EQ(0u, sampler.sample(pc, std::vector<size_t>(), 100)->size());
+  EXPECT_EQ(0u, sampler.sample(pc, indices, 0)->size());
+  // The nearest case that must still come back full.
+  EXPECT_EQ(1u, sampler.sample(pc, indices, 1)->size());
 }
 }  // namespace test
 }  // namespace mcl_3dl

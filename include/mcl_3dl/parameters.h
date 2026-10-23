@@ -63,6 +63,11 @@ public:
   double max_weight_ratio_;
   double max_weight_;
   double normal_search_range_;
+  /// How many candidates to weigh per point kept, when the normals come
+  /// from the map and each one costs a query. Held to at least 2 where it is
+  /// used: a pool exactly as long as the draw leaves the weights nothing to
+  /// decide, so 0 and 1 both behave as 2.
+  size_t pool_ratio_ = 10;
 };
 
 class LidarMeasurementModelLikelihoodParameters
