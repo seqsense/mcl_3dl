@@ -26,14 +26,5 @@ jobs:
       abuild-env: |
         MCL_3DL_EXTRA_TESTS=ON
       rosinstall-files: .rosinstall
-      # .rosinstall pulls the whole sq_ros1_rclcpp_compat repository, whose
-      # samples/ packages are demos that this repository must not be gated on.
-      # Restrict the build to this package plus what it actually needs. The
-      # ../.. paths resolve to the container's ~/extsrc, where the rosinstall
-      # dependencies are checked out.
-      manifest-files: |
-        package.xml
-        ../../home/builder/extsrc/mcl_3dl_msgs/package.xml
-        ../../home/builder/extsrc/sq_ros1_rclcpp_compat/sq_ros1_rclcpp_compat/package.xml
     secrets:
       bot-comment-token: ${{ secrets.GITHUB_TOKEN }}
